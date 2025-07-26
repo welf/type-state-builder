@@ -39,9 +39,9 @@ pub mod tokens;
 pub mod type_state_builder;
 
 // Re-export main types and functions for convenience
+pub use self::type_state_builder::generate_type_state_builder;
 pub use regular_builder::generate_regular_builder;
 pub use tokens::TokenGenerator;
-pub use type_state_builder::generate_type_state_builder;
 
 use crate::analysis::StructAnalysis;
 
