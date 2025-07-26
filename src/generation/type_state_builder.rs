@@ -233,7 +233,7 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
 
         Ok(quote! {
             #doc
-            pub struct #builder_ident #impl_generics #where_clause {
+            struct #builder_ident #impl_generics #where_clause {
                 #field_declarations
             }
 
