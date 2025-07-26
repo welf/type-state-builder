@@ -1,0 +1,29 @@
+error: Field 'count' has conflicting attributes: skip_setter and setter_name.
+
+       The skip_setter attribute prevents setter method generation, but the presence of setter_name indicates you still want to have a setter. We can't resolve this ambiguity automatically, so you need to fix the issue.
+
+       Either:
+       1. Remove setter_name = "custom_name" to keep skip_setter
+       2. Remove skip_setter to generate a setter with the custom name
+
+       Example fixes:
+         // Option 1: Field with no setter (auto-generated value)
+         #[builder(default = "...", skip_setter)]
+         count: u32,
+
+         // Option 2: Field with custom setter name
+         #[builder(setter_name = "custom_name")]
+         count: u32,
+ --> tests/ui/skip-setter-with-setter-name.rs:9:5
+  |
+9 |     count: u32,
+  |     ^^^^^
+
+error[E0599]: no function or associated item named `builder` found for struct `InvalidStruct` in the current scope
+  --> tests/ui/skip-setter-with-setter-name.rs:13:36
+   |
+4  | struct InvalidStruct {
+   | -------------------- function or associated item `builder` not found for this struct
+...
+13 |     let _instance = InvalidStruct::builder()
+   |                                    ^^^^^^^ function or associated item not found in `InvalidStruct`

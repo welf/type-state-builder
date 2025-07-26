@@ -1,0 +1,13 @@
+error[E0599]: no method named `build` found for struct `ConfigBuilder_MissingApi_key_MissingEndpoint` in the current scope
+  --> tests/ui/missing-all-required-fields.rs:18:10
+   |
+3  |   #[derive(TypeStateBuilder)]
+   |            ---------------- method `build` not found for this struct
+...
+16 |       let config = Config::builder()
+   |  __________________-
+17 | |         .timeout(Some(5000))
+18 | |         .build(); // Error: missing required fields 'api_key' and 'endpoint'
+   | |         -^^^^^ method not found in `ConfigBuilder_MissingApi_key_MissingEndpoint`
+   | |_________|
+   |

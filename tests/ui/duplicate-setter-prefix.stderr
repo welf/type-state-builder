@@ -1,0 +1,14 @@
+error: Duplicate setter_prefix attribute. Only one setter_prefix is allowed per field
+ --> tests/ui/duplicate-setter-prefix.rs:7:15
+  |
+7 |     #[builder(setter_prefix = "set_")]
+  |               ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `builder` found for struct `DuplicateSetterPrefix` in the current scope
+  --> tests/ui/duplicate-setter-prefix.rs:14:44
+   |
+4  | struct DuplicateSetterPrefix {
+   | ---------------------------- function or associated item `builder` not found for this struct
+...
+14 |     let _instance = DuplicateSetterPrefix::builder()
+   |                                            ^^^^^^^ function or associated item not found in `DuplicateSetterPrefix`

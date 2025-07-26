@@ -1,0 +1,13 @@
+error[E0599]: no method named `build` found for struct `UserBuilder_HasName_MissingEmail` in the current scope
+  --> tests/ui/missing-required-field.rs:18:10
+   |
+3  |   #[derive(TypeStateBuilder)]
+   |            ---------------- method `build` not found for this struct
+...
+16 |       let user = User::builder()
+   |  ________________-
+17 | |         .name("Alice".to_string())
+18 | |         .build(); // Error: missing required field 'email'
+   | |         -^^^^^ method not found in `UserBuilder_HasName_MissingEmail`
+   | |_________|
+   |

@@ -1,0 +1,8 @@
+error[E0599]: no method named `build` found for struct `PersonBuilder_MissingName_MissingAge` in the current scope
+  --> tests/ui/build-without-setting-any-field.rs:15:36
+   |
+3  | #[derive(TypeStateBuilder)]
+   |          ---------------- method `build` not found for this struct
+...
+15 |     let person = Person::builder().build();
+   |                                    ^^^^^ method not found in `PersonBuilder_MissingName_MissingAge`

@@ -1,0 +1,16 @@
+error: Field-level setter_prefix is incompatible with skip_setter. Remove one of these attributes.
+ --> tests/ui/skip-setter-with-prefix.rs:3:10
+  |
+3 | #[derive(TypeStateBuilder)]
+  |          ^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no function or associated item named `builder` found for struct `InvalidStruct` in the current scope
+  --> tests/ui/skip-setter-with-prefix.rs:13:36
+   |
+4  | struct InvalidStruct {
+   | -------------------- function or associated item `builder` not found for this struct
+...
+13 |     let _instance = InvalidStruct::builder()
+   |                                    ^^^^^^^ function or associated item not found in `InvalidStruct`

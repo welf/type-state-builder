@@ -1,0 +1,14 @@
+error: Duplicate required attribute. Only one required is allowed per field
+ --> tests/ui/duplicate-required.rs:7:15
+  |
+7 |     #[builder(required)]
+  |               ^^^^^^^^
+
+error[E0599]: no function or associated item named `builder` found for struct `DuplicateRequired` in the current scope
+  --> tests/ui/duplicate-required.rs:14:40
+   |
+4  | struct DuplicateRequired {
+   | ------------------------ function or associated item `builder` not found for this struct
+...
+14 |     let _instance = DuplicateRequired::builder()
+   |                                        ^^^^^^^ function or associated item not found in `DuplicateRequired`

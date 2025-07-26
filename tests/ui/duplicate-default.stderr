@@ -1,0 +1,14 @@
+error: Duplicate default attribute. Only one default is allowed per field
+ --> tests/ui/duplicate-default.rs:9:15
+  |
+9 |     #[builder(default = "100")]
+  |               ^^^^^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `builder` found for struct `DuplicateDefault` in the current scope
+  --> tests/ui/duplicate-default.rs:14:39
+   |
+4  | struct DuplicateDefault {
+   | ----------------------- function or associated item `builder` not found for this struct
+...
+14 |     let _instance = DuplicateDefault::builder()
+   |                                       ^^^^^^^ function or associated item not found in `DuplicateDefault`
