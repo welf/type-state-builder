@@ -1,0 +1,29 @@
+[package]
+name = "type-state-builder"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70.0"
+description = "Type-state builder pattern derive macro with compile-time safety"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/welf/type-state-builder"
+homepage = "https://github.com/welf/type-state-builder"
+documentation = "https://docs.rs/type-state-builder"
+keywords = ["builder", "type-state", "macro", "procedural", "derive"]
+categories = ["development-tools", "rust-patterns"]
+authors = ["Arthur Welf (welf)"]
+readme = "README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
+[dev-dependencies]
+trybuild = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(FALSE)'] }
