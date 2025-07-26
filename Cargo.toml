@@ -25,5 +25,3 @@ proc-macro2 = "1.0"
 trybuild = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(FALSE)'] }
