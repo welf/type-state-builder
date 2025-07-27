@@ -231,9 +231,11 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             .token_generator
             .generate_debug_impl(&quote! { #builder_ident }, &type_generics);
 
+        let struct_visibility = self.token_generator.analysis().struct_visibility();
+
         Ok(quote! {
             #doc
-            struct #builder_ident #impl_generics #where_clause {
+            #struct_visibility struct #builder_ident #impl_generics #where_clause {
                 #field_declarations
             }
 

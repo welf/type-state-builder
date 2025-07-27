@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-07-27
+
+### Fixed
+
+- **Visibility inheritance**: Generated builder types now correctly inherit the visibility of the original struct
+  - Public structs generate public builders for cross-module usage
+  - Private structs generate private builders to respect Rust privacy rules
+  - All visibility levels supported: `pub`, `pub(crate)`, `pub(super)`, `pub(in path)`, and private
+  - Fixes compilation errors when using builders across module boundaries
+
 ## [0.1.0] - 2025-07-27
 
 ### Added
@@ -34,6 +44,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/welf/type-state-builder/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/welf/type-state-builder/releases/tag/v0.1.0
-

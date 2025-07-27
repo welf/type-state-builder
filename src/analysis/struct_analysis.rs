@@ -48,6 +48,9 @@ pub struct StructAnalysis {
     /// The name of the struct being analyzed
     struct_name: syn::Ident,
 
+    /// The visibility of the struct (pub, pub(crate), private, etc.)
+    struct_visibility: syn::Visibility,
+
     /// The complete generic parameter list from the struct
     struct_generics: Generics,
 
@@ -88,6 +91,7 @@ impl StructAnalysis {
     /// - Generic parameter mismatches
     fn from_derive_input(input: &DeriveInput) -> syn::Result<Self> {
         let struct_name = input.ident.clone();
+        let struct_visibility = input.vis.clone();
         let struct_generics = input.generics.clone();
         let struct_attributes = parse_struct_attributes(&input.attrs)?;
         let fields = extract_named_fields(input)?;
@@ -95,6 +99,7 @@ impl StructAnalysis {
 
         Ok(StructAnalysis {
             struct_name,
+            struct_visibility,
             struct_generics,
             struct_attributes,
             required_fields,
@@ -107,6 +112,11 @@ impl StructAnalysis {
     /// Returns the struct name.
     pub fn struct_name(&self) -> &syn::Ident {
         &self.struct_name
+    }
+
+    /// Returns the struct's visibility (pub, pub(crate), private, etc.).
+    pub fn struct_visibility(&self) -> &syn::Visibility {
+        &self.struct_visibility
     }
 
     /// Returns the struct's generic parameters and constraints.
