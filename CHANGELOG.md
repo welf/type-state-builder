@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-07-27
+
+### Improved
+
+- **Type name readability**: Generated builder type names now use PascalCase for field names instead of preserving underscores
+  - `LanguageConfigBuilder_HasLanguage_id_MissingFqn_separator` → `LanguageConfigBuilder_HasLanguageId_MissingFqnSeparator`
+  - Improves readability and follows Rust type naming conventions
+  - Makes generated type names in error messages much clearer
+
 ## [0.1.1] - 2025-07-27
 
 ### Fixed
@@ -44,6 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/welf/type-state-builder/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/welf/type-state-builder/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/welf/type-state-builder/releases/tag/v0.1.0

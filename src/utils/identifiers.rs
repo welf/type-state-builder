@@ -60,6 +60,39 @@ pub fn capitalize_first_letter(s: &str) -> String {
     }
 }
 
+/// Converts snake_case to PascalCase for type names.
+///
+/// This function transforms field names like `language_id` into proper type name
+/// components like `LanguageId` for use in generated builder type names.
+///
+/// # Examples
+///
+/// - `"language_id"` → `"LanguageId"`
+/// - `"fqn_separator"` → `"FqnSeparator"`
+/// - `"user"` → `"User"`
+/// - `"user_name"` → `"UserName"`
+///
+/// # Arguments
+///
+/// * `snake_case_str` - A string in snake_case format
+///
+/// # Returns
+///
+/// A String in PascalCase format suitable for type names.
+pub fn snake_case_to_pascal_case(snake_case_str: &str) -> String {
+    // Handle empty string case early
+    if snake_case_str.is_empty() {
+        return String::new();
+    }
+
+    // Split by underscores and capitalize each part
+    snake_case_str
+        .split('_')
+        .map(capitalize_first_letter)
+        .collect::<Vec<String>>()
+        .join("")
+}
+
 /// Generates a unique identifier by appending a deterministic hash suffix.
 ///
 /// This function creates unique identifiers to avoid naming conflicts in generated
@@ -161,5 +194,47 @@ mod tests {
         // Numbers and special characters
         assert_eq!(capitalize_first_letter("1field"), "1field"); // Numbers don't change
         assert_eq!(capitalize_first_letter("_field"), "_field"); // Underscore doesn't change
+    }
+
+    #[test]
+    fn test_snake_case_to_pascal_case_examples() {
+        // Examples from the function documentation
+        assert_eq!(snake_case_to_pascal_case("language_id"), "LanguageId");
+        assert_eq!(snake_case_to_pascal_case("fqn_separator"), "FqnSeparator");
+        assert_eq!(snake_case_to_pascal_case("user"), "User");
+        assert_eq!(snake_case_to_pascal_case("user_name"), "UserName");
+    }
+
+    #[test]
+    fn test_snake_case_to_pascal_case() {
+        // Normal snake_case transformations
+        assert_eq!(snake_case_to_pascal_case("language_id"), "LanguageId");
+        assert_eq!(snake_case_to_pascal_case("fqn_separator"), "FqnSeparator");
+        assert_eq!(snake_case_to_pascal_case("user_name"), "UserName");
+        assert_eq!(snake_case_to_pascal_case("api_key"), "ApiKey");
+
+        // Single words (no underscores)
+        assert_eq!(snake_case_to_pascal_case("user"), "User");
+        assert_eq!(snake_case_to_pascal_case("name"), "Name");
+        assert_eq!(snake_case_to_pascal_case("id"), "Id");
+
+        // Multiple underscores
+        assert_eq!(
+            snake_case_to_pascal_case("very_long_field_name"),
+            "VeryLongFieldName"
+        );
+        assert_eq!(snake_case_to_pascal_case("a_b_c_d"), "ABCD");
+
+        // Edge cases
+        assert_eq!(snake_case_to_pascal_case(""), "");
+        assert_eq!(snake_case_to_pascal_case("_"), "");
+        assert_eq!(snake_case_to_pascal_case("__"), "");
+        assert_eq!(snake_case_to_pascal_case("field_"), "Field");
+        assert_eq!(snake_case_to_pascal_case("_field"), "Field");
+
+        // Numbers and mixed cases
+        assert_eq!(snake_case_to_pascal_case("field_1"), "Field1");
+        assert_eq!(snake_case_to_pascal_case("user_2fa"), "User2fa");
+        assert_eq!(snake_case_to_pascal_case("api_v2_key"), "ApiV2Key");
     }
 }

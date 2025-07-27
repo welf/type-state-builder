@@ -50,7 +50,7 @@
 
 use crate::analysis::StructAnalysis;
 use crate::generation::TokenGenerator;
-use crate::utils::identifiers::{capitalize_first_letter, strip_raw_identifier_prefix};
+use crate::utils::identifiers::{snake_case_to_pascal_case, strip_raw_identifier_prefix};
 use quote::quote;
 use syn::Ident;
 
@@ -825,15 +825,15 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             for field_index in 0..num_required_fields {
                 let field_name = &analysis.required_fields()[field_index].name().to_string();
                 let clean_name = strip_raw_identifier_prefix(field_name);
-                let capitalized_name = capitalize_first_letter(&clean_name);
+                let pascal_case_name = snake_case_to_pascal_case(&clean_name);
 
                 if (state_mask & (1 << field_index)) != 0 {
                     // Field is set
                     set_fields.push(field_index);
-                    has_parts.push(format!("Has{capitalized_name}"));
+                    has_parts.push(format!("Has{pascal_case_name}"));
                 } else {
                     // Field is missing
-                    missing_parts.push(format!("Missing{capitalized_name}"));
+                    missing_parts.push(format!("Missing{pascal_case_name}"));
                 }
             }
 
