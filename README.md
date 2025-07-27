@@ -6,9 +6,9 @@
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
 
-**TypeStateBuilder** is a Rust procedural macro that generates compile-time safe builders using the **type-state
+**TypeStateBuilder** is a Rust derive macro that generates compile-time safe builders using the **type-state builder
 pattern**. It prevents runtime errors by making it impossible to build incomplete objects, while providing an ergonomic
-and intuitive API.
+and intuitive API and developer-friendly compilation errors.
 
 ## 📚 Table of Contents
 

@@ -2,12 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-07-27
+
 ### Added
+
 - Initial implementation of the type-state builder pattern derive macro
 - Support for required and optional fields with compile-time validation
 - Custom setter names and prefixes for flexible API design
@@ -19,15 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic builder pattern selection (type-state vs regular) based on field requirements
 - Extensive test coverage including UI tests for error messages
 - Complete documentation with examples and usage patterns
-
-### Security
-- All code follows secure coding practices with proper error handling
-- No unsafe code blocks used throughout the implementation
-
-## [0.1.0] - 2024-01-XX
-
-### Added
-- Initial release of type-state-builder
 - Type-state builder pattern implementation for compile-time safety
 - Regular builder pattern for structs with only optional fields
 - Comprehensive attribute support for customization
@@ -35,5 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation and examples
 - MIT OR Apache-2.0 dual license
 
+### Security
+
+- All code follows secure coding practices with proper error handling
+- No unsafe code blocks used throughout the implementation
+
 [Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/welf/type-state-builder/releases/tag/v0.1.0
+
