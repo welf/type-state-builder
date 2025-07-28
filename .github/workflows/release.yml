@@ -1,0 +1,143 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # First, run all checks to ensure quality
+  pre-release-checks:
+    name: Pre-release Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Run doctests
+        run: cargo test --doc --verbose
+
+      - name: Check documentation
+        run: cargo doc --no-deps --verbose
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Verify publishable
+        run: cargo publish --dry-run
+
+  # Publish to crates.io
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: pre-release-checks
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies  
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Create GitHub release
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this version
+        id: extract_changelog
+        run: |
+          # Extract the changelog section for this version
+          VERSION=${{ steps.extract_version.outputs.version }}
+          
+          # Use awk to extract the section between this version and the next one
+          CHANGELOG=$(awk "/## \[${VERSION}\]/{flag=1; next} /## \[/{if(flag) exit} flag" CHANGELOG.md | sed '/^$/d')
+          
+          # Save to file to handle multiline content properly
+          echo "$CHANGELOG" > release_notes.md
+          
+          # Also set as output (truncated for GitHub's limits)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT  
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release v${{ steps.extract_version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Notify on success/failure
+  notify:
+    name: Notify Release Status
+    runs-on: ubuntu-latest
+    needs: [pre-release-checks, publish, github-release]
+    if: always()
+    steps:
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Release Success
+        if: needs.publish.result == 'success' && needs.github-release.result == 'success'
+        run: |
+          echo "✅ Release v${{ steps.extract_version.outputs.version }} published successfully!"
+          echo "📦 Available on crates.io: https://crates.io/crates/type-state-builder/${{ steps.extract_version.outputs.version }}"
+          echo "🚀 GitHub release: https://github.com/welf/type-state-builder/releases/tag/v${{ steps.extract_version.outputs.version }}"
+
+      - name: Release Failed
+        if: needs.pre-release-checks.result == 'failure' || needs.publish.result == 'failure' || needs.github-release.result == 'failure'
+        run: |
+          echo "❌ Release v${{ steps.extract_version.outputs.version }} failed!"
+          echo "Pre-release checks: ${{ needs.pre-release-checks.result }}"
+          echo "Publish: ${{ needs.publish.result }}" 
+          echo "GitHub release: ${{ needs.github-release.result }}"
+          exit 1
