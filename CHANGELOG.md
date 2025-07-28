@@ -7,6 +7,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-07-28
+
+### Added
+
+- **Ergonomic conversions with `impl_into` attribute**: New attribute system for more developer-friendly setter methods
+  - `#[builder(impl_into)]` at struct level applies to all setter methods
+  - `#[builder(impl_into)]` and `#[builder(impl_into = false)]` at field level for fine-grained control
+  - Field-level settings override struct-level defaults for maximum flexibility
+  - Setter methods accept `impl Into<FieldType>` instead of `FieldType` directly
+  - Enables ergonomic usage: `.name("Alice")` instead of `.name("Alice".to_string())`
+  - Zero runtime cost - all conversions happen at compile time
+  - Works with common conversions: `&str` → `String`, `&str` → `PathBuf`, etc.
+  - Comprehensive validation prevents conflicts with `skip_setter` attribute
+  - Extensive documentation with real-world examples and usage patterns
+
+### Improved
+
+- **Enhanced documentation**: Added comprehensive examples for all `impl_into` usage patterns
+- **Better error messages**: Clear validation errors for invalid attribute combinations
+- **Testing coverage**: Added 341+ tests including integration tests and UI tests for error validation
+
 ## [0.1.2] - 2025-07-27
 
 ### Improved
@@ -53,7 +74,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/welf/type-state-builder/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/welf/type-state-builder/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/welf/type-state-builder/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/welf/type-state-builder/releases/tag/v0.1.0

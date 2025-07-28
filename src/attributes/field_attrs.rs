@@ -104,6 +104,25 @@ pub struct FieldAttributes {
     /// - Internal fields not meant to be set by users
     ///
     pub skip_setter: bool,
+
+    /// Whether the setter method should use `impl Into<FieldType>` parameters.
+    ///
+    /// This field-level setting controls setter parameter types and takes precedence
+    /// over struct-level `impl_into` settings.
+    ///
+    /// # Values
+    ///
+    /// - `None` - Inherit from struct-level `impl_into` setting
+    /// - `Some(true)` - Use `impl Into<FieldType>` parameters  
+    /// - `Some(false)` - Use `FieldType` parameters directly
+    ///
+    /// # Interaction with skip_setter
+    ///
+    /// This attribute is mutually exclusive with `skip_setter`. Fields that skip
+    /// setter generation cannot specify `impl_into` behavior.
+    ///
+    /// See the crate-level documentation for comprehensive usage examples.
+    pub impl_into: Option<bool>,
 }
 
 impl Default for FieldAttributes {
@@ -115,6 +134,7 @@ impl Default for FieldAttributes {
             setter_prefix: None,
             default_value: None,
             skip_setter: false,
+            impl_into: None,
         }
     }
 }
@@ -150,6 +170,14 @@ impl FieldAttributes {
             return Err(syn::Error::new(
                 proc_macro2::Span::call_site(),
                 "Field-level setter_prefix is incompatible with skip_setter. Remove one of these attributes.",
+            ));
+        }
+
+        // Validate that impl_into and skip_setter are mutually exclusive
+        if self.impl_into.is_some() && self.skip_setter {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "Field-level impl_into is incompatible with skip_setter. Remove one of these attributes.",
             ));
         }
 
@@ -330,10 +358,28 @@ pub fn parse_field_attributes(attrs: &[syn::Attribute]) -> syn::Result<FieldAttr
 
                     field_attributes.default_value = Some(default_value);
                     Ok(())
+                } else if meta.path.is_ident("impl_into") {
+                    // #[builder(impl_into)] or #[builder(impl_into = true/false)]
+                    // Check for duplicate impl_into attributes
+                    if field_attributes.impl_into.is_some() {
+                        return Err(meta.error("Duplicate impl_into attribute. Only one impl_into is allowed per field"));
+                    }
+
+                    // Check if there's a value (impl_into = true/false) or just the flag (impl_into)
+                    if meta.input.peek(syn::Token![=]) {
+                        // #[builder(impl_into = true/false)]
+                        let value = meta.value()?;
+                        let lit_bool: syn::LitBool = value.parse()?;
+                        field_attributes.impl_into = Some(lit_bool.value);
+                    } else {
+                        // #[builder(impl_into)] - defaults to true
+                        field_attributes.impl_into = Some(true);
+                    }
+                    Ok(())
                 } else {
                     // Unknown attribute
                     Err(meta.error(
-                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter"
+                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into"
                     ))
                 }
             })?;
@@ -359,6 +405,7 @@ mod tests {
         assert!(attrs.setter_prefix.is_none());
         assert!(attrs.default_value.is_none());
         assert!(!attrs.skip_setter);
+        assert!(attrs.impl_into.is_none());
     }
 
     #[test]
@@ -604,6 +651,7 @@ mod tests {
             setter_prefix: Some("with_".to_string()),
             default_value: None,
             skip_setter: false,
+            impl_into: None,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -614,6 +662,7 @@ mod tests {
             setter_prefix: Some("with_".to_string()),
             default_value: Some("42".to_string()),
             skip_setter: true,
+            impl_into: None,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -789,5 +838,149 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Duplicate setter_name attribute"));
+    }
+
+    // Tests for impl_into functionality
+
+    #[test]
+    fn test_parse_impl_into_flag_attribute() {
+        let attrs = vec![parse_quote!(#[builder(impl_into)])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(!field_attrs.required);
+        assert!(field_attrs.setter_name.is_none());
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert_eq!(field_attrs.impl_into, Some(true));
+    }
+
+    #[test]
+    fn test_parse_impl_into_true_attribute() {
+        let attrs = vec![parse_quote!(#[builder(impl_into = true)])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(!field_attrs.required);
+        assert!(field_attrs.setter_name.is_none());
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert_eq!(field_attrs.impl_into, Some(true));
+    }
+
+    #[test]
+    fn test_parse_impl_into_false_attribute() {
+        let attrs = vec![parse_quote!(#[builder(impl_into = false)])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(!field_attrs.required);
+        assert!(field_attrs.setter_name.is_none());
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert_eq!(field_attrs.impl_into, Some(false));
+    }
+
+    #[test]
+    fn test_parse_combined_attributes_with_impl_into() {
+        let attrs = vec![parse_quote!(#[builder(required, impl_into, setter_name = "set_field")])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.required);
+        assert_eq!(field_attrs.setter_name, Some("set_field".to_string()));
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert_eq!(field_attrs.impl_into, Some(true));
+    }
+
+    #[test]
+    fn test_parse_multiple_separate_attributes_with_impl_into() {
+        let attrs = vec![
+            parse_quote!(#[builder(required)]),
+            parse_quote!(#[builder(impl_into = false)]),
+            parse_quote!(#[builder(setter_name = "custom_name")]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.required);
+        assert_eq!(field_attrs.setter_name, Some("custom_name".to_string()));
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert_eq!(field_attrs.impl_into, Some(false));
+    }
+
+    #[test]
+    fn test_parse_duplicate_impl_into_error() {
+        let attrs = vec![
+            parse_quote!(#[builder(impl_into)]),
+            parse_quote!(#[builder(impl_into = false)]),
+        ];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate impl_into attribute"));
+    }
+
+    #[test]
+    fn test_validate_impl_into_with_skip_setter_error() {
+        let attrs = vec![parse_quote!(#[builder(impl_into, skip_setter)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("impl_into is incompatible with skip_setter"));
+    }
+
+    #[test]
+    fn test_validate_impl_into_false_with_skip_setter_error() {
+        let attrs = vec![parse_quote!(#[builder(impl_into = false, skip_setter)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("impl_into is incompatible with skip_setter"));
+    }
+
+    #[test]
+    fn test_validate_valid_impl_into_combinations() {
+        // impl_into with required
+        let attrs = vec![parse_quote!(#[builder(required, impl_into)])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // impl_into with setter_name
+        let attrs = vec![parse_quote!(#[builder(impl_into, setter_name = "custom")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // impl_into with setter_prefix
+        let attrs = vec![parse_quote!(#[builder(impl_into, setter_prefix = "with_")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // impl_into with default
+        let attrs = vec![parse_quote!(#[builder(impl_into, default = "42")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // impl_into = false is also valid
+        let attrs = vec![parse_quote!(#[builder(impl_into = false)])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_field_attributes_default_includes_impl_into() {
+        let default_attrs = FieldAttributes::default();
+        assert!(!default_attrs.required);
+        assert!(default_attrs.setter_name.is_none());
+        assert!(default_attrs.setter_prefix.is_none());
+        assert!(default_attrs.default_value.is_none());
+        assert!(!default_attrs.skip_setter);
+        assert!(default_attrs.impl_into.is_none());
     }
 }

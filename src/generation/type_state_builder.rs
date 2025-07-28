@@ -50,6 +50,7 @@
 
 use crate::analysis::StructAnalysis;
 use crate::generation::TokenGenerator;
+use crate::utils::field_utils::resolve_effective_impl_into;
 use crate::utils::identifiers::{snake_case_to_pascal_case, strip_raw_identifier_prefix};
 use quote::quote;
 use syn::Ident;
@@ -532,13 +533,33 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             Some("This method transitions the builder to a new state where this field is set."),
         );
 
-        // Generate field assignments for the transition
-        let field_assignments = self.generate_field_assignments_for_transition(field_index)?;
+        // Check if impl_into is enabled for this field
+        let struct_impl_into = self
+            .token_generator
+            .analysis()
+            .struct_attributes()
+            .get_impl_into();
+        let field_impl_into = field.attributes().impl_into;
+        let use_impl_into = resolve_effective_impl_into(field_impl_into, struct_impl_into);
+
+        // Generate parameter type and field assignments based on impl_into setting
+        let (param_type, field_assignments) = if use_impl_into {
+            // Use impl Into<T> parameter and .into() conversion
+            let param_type = quote! { impl Into<#field_type> };
+            let field_assignments =
+                self.generate_field_assignments_for_transition_with_into(field_index)?;
+            (param_type, field_assignments)
+        } else {
+            // Use direct type parameter
+            let param_type = quote! { #field_type };
+            let field_assignments = self.generate_field_assignments_for_transition(field_index)?;
+            (param_type, field_assignments)
+        };
 
         Ok(quote! {
             impl #impl_generics #input_builder_ident #type_generics #where_clause {
                 #doc
-                pub fn #setter_ident(self, value: #field_type) -> #output_builder_ident #type_generics {
+                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics {
                     #output_builder_ident {
                         #field_assignments
                     }
@@ -601,6 +622,63 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
         Ok(assignments)
     }
 
+    /// Generates field assignments for a state transition with `.into()` conversion.
+    ///
+    /// This is similar to `generate_field_assignments_for_transition` but uses
+    /// `value.into()` for the field being set, which is used when the field
+    /// has `impl_into` enabled.
+    ///
+    /// # Arguments
+    ///
+    /// * `setting_field_index` - Index of the field being set
+    ///
+    /// # Returns
+    ///
+    /// A `syn::Result<proc_macro2::TokenStream>` containing field assignment code.
+    fn generate_field_assignments_for_transition_with_into(
+        &self,
+        setting_field_index: usize,
+    ) -> syn::Result<proc_macro2::TokenStream> {
+        let mut assignments = proc_macro2::TokenStream::new();
+        let analysis = self.token_generator.analysis();
+
+        // Handle required fields
+        for (field_index, required_field) in analysis.required_fields().iter().enumerate() {
+            let field_name = required_field.name();
+
+            if field_index == setting_field_index {
+                // This is the field being set - use .into() conversion
+                assignments.extend(quote! {
+                    #field_name: value.into(),
+                });
+            } else {
+                // Copy from existing state
+                assignments.extend(quote! {
+                    #field_name: self.#field_name,
+                });
+            }
+        }
+
+        // Copy all optional fields
+        for optional_field in analysis.optional_fields() {
+            let field_name = optional_field.name();
+            assignments.extend(quote! {
+                #field_name: self.#field_name,
+            });
+        }
+
+        // Copy PhantomData if present
+        if analysis.needs_phantom_data() {
+            let marker_name = self.token_generator.get_phantom_data_field_name();
+            let marker_ident = syn::parse_str::<Ident>(marker_name)?;
+            assignments.extend(quote! {
+                #marker_ident: self.#marker_ident,
+            });
+        }
+
+        Ok(assignments)
+    }
+
     /// Generates setter methods for optional fields.
     ///
     /// Optional field setters don't cause state transitions - they work
@@ -620,10 +698,14 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
 
             // Generate setter for each optional field
             let struct_setter_prefix = analysis.struct_attributes().get_setter_prefix();
+            let struct_impl_into = analysis.struct_attributes().get_impl_into();
             for optional_field in analysis.optional_fields() {
                 if optional_field.should_generate_setter() {
-                    let setter_method = optional_field
-                        .generate_setter_method(&syn::parse_quote!(Self), struct_setter_prefix)?;
+                    let setter_method = optional_field.generate_setter_method(
+                        &syn::parse_quote!(Self),
+                        struct_setter_prefix,
+                        struct_impl_into,
+                    )?;
                     setter_methods.extend(setter_method);
                 }
             }

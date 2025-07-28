@@ -55,6 +55,7 @@
 //!
 //! - `#[builder(build_method = "method_name")]` - Custom build method name
 //! - `#[builder(setter_prefix = "prefix_")]` - Prefix for all setter method names
+//! - `#[builder(impl_into)]` - Generate setters with `impl Into<FieldType>` parameters
 //!
 //! ## Field-level Attributes
 //!
@@ -63,6 +64,8 @@
 //! - `#[builder(setter_prefix = "prefix_")]` - Custom prefix for setter method name
 //! - `#[builder(default = "expr")]` - Custom default value expression
 //! - `#[builder(skip_setter)]` - Don't generate setter (requires default)
+//! - `#[builder(impl_into)]` - Generate setter with `impl Into<FieldType>` parameter
+//! - `#[builder(impl_into = false)]` - Override struct-level `impl_into` for this field
 //!
 //! # Advanced Examples
 //!
@@ -166,6 +169,111 @@
 //!     .set_credentials("user:pass".to_string())
 //!     .with_timeout_seconds(Some(60))
 //!     .build();
+//! ```
+//!
+//! ## Ergonomic Conversions with `impl_into`
+//!
+//! The `impl_into` attribute generates setter methods that accept `impl Into<FieldType>`
+//! parameters, allowing for more ergonomic API usage by automatically converting
+//! compatible types.
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! // Struct-level impl_into applies to all setters
+//! #[derive(TypeStateBuilder)]
+//! #[builder(impl_into)]
+//! struct ApiClient {
+//!     #[builder(required)]
+//!     base_url: String,
+//!     
+//!     #[builder(required)]
+//!     api_key: String,
+//!     
+//!     timeout: Option<u32>,
+//!     user_agent: String, // Uses Default::default()
+//! }
+//!
+//! // Can now use &str directly instead of String::from() or .to_string()
+//! let client = ApiClient::builder()
+//!     .base_url("https://api.example.com")    // &str -> String
+//!     .api_key("secret-key")                   // &str -> String
+//!     .timeout(Some(30))
+//!     .user_agent("MyApp/1.0")                 // &str -> String
+//!     .build();
+//! ```
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! // Field-level control with precedence rules
+//! #[derive(TypeStateBuilder)]
+//! #[builder(impl_into)]  // Default for all fields
+//! struct Document {
+//!     #[builder(required)]
+//!     title: String,  // Inherits impl_into = true
+//!     
+//!     #[builder(required, impl_into = false)]
+//!     content: String,  // Override: requires String directly
+//!     
+//!     #[builder(impl_into = true)]
+//!     category: Option<String>,  // Explicit impl_into = true
+//!     
+//!     #[builder(impl_into = false)]
+//!     tags: Vec<String>,  // Override: requires Vec<String> directly
+//! }
+//!
+//! let doc = Document::builder()
+//!     .title("My Document")                // &str -> String (inherited)
+//!     .content("Content".to_string())      // Must use String (override)
+//!     .category(Some("tech".to_string()))  // impl Into for Option<String>
+//!     .tags(vec!["rust".to_string()])      // Must use Vec<String> (override)
+//!     .build();
+//! ```
+//!
+//! **Note**: `impl_into` is incompatible with `skip_setter` since skipped fields
+//! don't have setter methods generated.
+//!
+//! ### Complete `impl_into` Example
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//! use std::path::PathBuf;
+//!
+//! // Demonstrate both struct-level and field-level impl_into usage
+//! #[derive(TypeStateBuilder)]
+//! #[builder(impl_into)]  // Struct-level default: enable for all fields
+//! struct CompleteExample {
+//!     #[builder(required)]
+//!     name: String,                        // Inherits: accepts impl Into<String>
+//!     
+//!     #[builder(required, impl_into = false)]
+//!     id: String,                          // Override: requires String directly
+//!     
+//!     #[builder(impl_into = true)]
+//!     description: Option<String>,         // Explicit: accepts impl Into<String>
+//!     
+//!     #[builder(default = "PathBuf::from(\"/tmp\")")]
+//!     work_dir: PathBuf,                   // Inherits: accepts impl Into<PathBuf>
+//!     
+//!     #[builder(impl_into = false, default = "Vec::new()")]
+//!     tags: Vec<String>,                   // Override: requires Vec<String>
+//! }
+//!
+//! // Usage demonstrating the different setter behaviors
+//! let example = CompleteExample::builder()
+//!     .name("Alice")                       // &str -> String (inherited impl_into)
+//!     .id("user_123".to_string())          // Must use String (override = false)
+//!     .description(Some("Engineer".to_string()))  // Option<String> required
+//!     .work_dir("/home/alice")             // &str -> PathBuf (inherited impl_into)
+//!     .tags(vec!["rust".to_string()])      // Must use Vec<String> (override = false)
+//!     .build();
+//!
+//! assert_eq!(example.name, "Alice");
+//! assert_eq!(example.id, "user_123");
+//! assert_eq!(example.description, Some("Engineer".to_string()));
+//! assert_eq!(example.work_dir, PathBuf::from("/home/alice"));
+//! assert_eq!(example.tags, vec!["rust"]);
 //! ```
 //!
 //! ## Optional-Only Structs (Regular Builder)

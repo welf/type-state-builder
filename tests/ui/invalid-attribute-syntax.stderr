@@ -1,4 +1,4 @@
-error: Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter
+error: Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into
  --> tests/ui/invalid-attribute-syntax.rs:6:15
   |
 6 |     #[builder(invalid_attribute)]

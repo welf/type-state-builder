@@ -20,6 +20,7 @@ and intuitive API and developer-friendly compilation errors.
   - [🎛️ Field Types](#️-field-types)
   - [🏷️ Custom Setter Names](#️-custom-setter-names)
   - [🎯 Setter Prefixes](#-setter-prefixes)
+  - [🔄 Ergonomic Conversions](#-ergonomic-conversions)
   - [🏗️ Custom Build Method](#️-custom-build-method)
   - [🧬 Generics Support](#-generics-support)
 - [📋 Complete Attribute Reference](#-complete-attribute-reference)
@@ -76,6 +77,7 @@ type-state-builder = "0.1.0"
 use type_state_builder::TypeStateBuilder;
 
 #[derive(TypeStateBuilder, Debug)]
+#[builder(impl_into)]  // Enable ergonomic conversions for all setters
 struct User {
     #[builder(required)]
     name: String,
@@ -91,8 +93,8 @@ struct User {
 fn main() {
     // ✅ This works - all required fields are set
     let user = User::builder()
-        .name("Alice".to_string())
-        .email("alice@example.com".to_string())
+        .name("Alice")                      // &str -> String via Into
+        .email("alice@example.com")         // &str -> String via Into
         .age(Some(30))
         .friends(vec!["Bob".to_string(), "Charlie".to_string()])
         .build();
@@ -101,8 +103,8 @@ fn main() {
 
     // ✅ Optional fields can be omitted
     let user2 = User::builder()
-        .name("Bob".to_string())
-        .email("bob@example.com".to_string())
+        .name("Bob")                        // &str -> String via Into
+        .email("bob@example.com")           // &str -> String via Into
         .build();
 
     println!("{user2:?}");
@@ -276,6 +278,74 @@ let client = ApiClient::builder()
     .build();
 ```
 
+### 🔄 Ergonomic Conversions
+
+The `impl_into` attribute generates setter methods that accept `impl Into<FieldType>` parameters, allowing for more ergonomic API usage by automatically converting compatible types.
+
+#### Struct-Level `impl_into`
+
+Apply `impl_into` to all setters in the struct:
+
+```rust
+#[derive(TypeStateBuilder)]
+#[builder(impl_into)]
+struct ApiClient {
+    #[builder(required)]
+    base_url: String,
+
+    #[builder(required)]
+    api_key: String,
+
+    timeout: Option<u32>,
+    user_agent: String, // Uses Default::default()
+}
+
+// Can now use &str directly instead of String::from() or .to_string()
+let client = ApiClient::builder()
+    .base_url("https://api.example.com")    // &str -> String
+    .api_key("secret-key")                   // &str -> String
+    .timeout(Some(30))
+    .user_agent("MyApp/1.0")                 // &str -> String
+    .build();
+```
+
+#### Field-Level Control with Precedence Rules
+
+Field-level `impl_into` settings override struct-level defaults:
+
+```rust
+#[derive(TypeStateBuilder)]
+#[builder(impl_into)]  // Default for all fields
+struct Document {
+    #[builder(required)]
+    title: String,  // Inherits impl_into = true
+
+    #[builder(required, impl_into = false)]
+    content: String,  // Override: requires String directly
+
+    #[builder(impl_into = true)]
+    category: Option<String>,  // Explicit impl_into = true
+
+    #[builder(impl_into = false)]
+    tags: Vec<String>,  // Override: requires Vec<String> directly
+}
+
+let doc = Document::builder()
+    .title("My Document")                // &str -> String (inherited)
+    .content("Content".to_string())      // Must use String (override)
+    .category(Some("tech".to_string()))  // impl Into for Option<String>
+    .tags(vec!["rust".to_string()])      // Must use Vec<String> (override)
+    .build();
+```
+
+**Key Benefits:**
+- ✅ **More ergonomic**: Use `"string"` instead of `"string".to_string()`
+- ✅ **Flexible control**: Apply globally or selectively
+- ✅ **Type safety**: Maintains compile-time guarantees while improving ergonomics
+- ✅ **Zero cost**: Conversions happen at compile time
+
+**Important Note:** `impl_into` is incompatible with `skip_setter` since skipped fields don't have setter methods generated.
+
 ### 🏗️ Custom Build Method
 
 Customize the name of the build method:
@@ -399,7 +469,8 @@ Applied to the struct itself:
 #[derive(TypeStateBuilder)]
 #[builder(
     build_method = "create",        // Custom build method name
-    setter_prefix = "with_"         // Prefix for all setter methods
+    setter_prefix = "with_",        // Prefix for all setter methods
+    impl_into                       // Generate setters with impl Into<T> parameters
 )]
 struct MyStruct { /* ... */ }
 ```
@@ -417,7 +488,9 @@ struct MyStruct {
         setter_name = "custom_name",        // Custom setter method name
         setter_prefix = "set_",             // Prefix for this setter (overrides struct-level)
         default = "42",                     // Custom default value expression
-        skip_setter                         // Don't generate a setter method
+        skip_setter,                        // Don't generate a setter method
+        impl_into,                          // Generate setter with impl Into<T> parameter
+        impl_into = false                   // Override struct-level impl_into for this field
     )]
     field: i32,
 }
@@ -444,6 +517,7 @@ struct Example {
     // #[builder(required, default = "0")]          // Required fields can't have defaults
     // #[builder(required, skip_setter)]            // Required fields need setters
     // #[builder(setter_prefix = "with_", skip_setter)] // Can't prefix skipped setters
+    // #[builder(impl_into, skip_setter)]           // Can't use impl_into with skipped setters
 
     // ❌ Duplicate attributes (compile errors)
     // #[builder(required, required)]               // Duplicate 'required' attribute
@@ -480,6 +554,19 @@ name: String,
 ```text
 error: Required fields cannot have default values. Remove #[builder(default = "...")]
        or make the field optional by removing #[builder(required)]
+```
+
+**Incompatible Conversions:**
+
+```rust,ignore
+#[builder(impl_into, skip_setter)]  // ❌ Error!
+field: String,
+```
+
+**Error message:**
+
+```text
+error: Field-level impl_into is incompatible with skip_setter. Remove one of these attributes.
 ```
 
 ## 🎨 Builder Patterns
@@ -651,6 +738,59 @@ fn main() {
 }
 ```
 
+### Configuration Builder with Ergonomic Conversions
+
+```rust
+use type_state_builder::TypeStateBuilder;
+use std::collections::HashMap;
+
+#[derive(TypeStateBuilder, Debug)]
+#[builder(impl_into, setter_prefix = "with_")]
+struct AppConfig {
+    #[builder(required)]
+    app_name: String,
+
+    #[builder(required)]
+    version: String,
+
+    #[builder(default = "8080")]
+    port: u16,
+
+    #[builder(default = "String::from(\"localhost\")")]
+    host: String,
+
+    #[builder(impl_into = false, setter_name = "environment_vars")]
+    env_vars: HashMap<String, String>,
+
+    #[builder(default = "Vec::new()")]
+    features: Vec<String>,
+
+    debug_mode: Option<bool>,
+
+    #[builder(default = "chrono::Utc::now()", skip_setter)]
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+fn main() {
+    // Ergonomic usage with impl_into
+    let config = AppConfig::builder()
+        .with_app_name("MyApp")              // &str -> String via Into
+        .with_version("1.0.0")               // &str -> String via Into
+        .with_port(3000)
+        .with_host("0.0.0.0")                // &str -> String via Into
+        .environment_vars({                  // Must use HashMap directly (impl_into = false)
+            let mut vars = HashMap::new();
+            vars.insert("RUST_LOG".to_string(), "debug".to_string());
+            vars
+        })
+        .with_features(vec!["api".to_string(), "web".to_string()])
+        .with_debug_mode(Some(true))
+        .build();
+
+    println!("App config: {config:?}");
+}
+```
+
 ## ❓ FAQ
 
 ### Q: When should I use TypeStateBuilder vs other builder libraries?
@@ -719,6 +859,38 @@ if is_debug {
 
 let config = builder.build();
 ```
+
+### Q: What's the difference between regular setters and `impl_into` setters?
+
+**A:** Regular setters require exact type matching, while `impl_into` setters accept any type that implements `Into<FieldType>`:
+
+```rust
+#[derive(TypeStateBuilder)]
+struct Example {
+    #[builder(required)]
+    name: String,
+    
+    #[builder(required, impl_into)]  
+    title: String,
+}
+
+let example = Example::builder()
+    .name("Alice".to_string())       // Regular: must use String
+    .title("Engineer")               // impl_into: can use &str
+    .build();
+```
+
+**Benefits of `impl_into`:**
+- ✅ **More ergonomic**: Use `"string"` instead of `"string".to_string()`  
+- ✅ **Flexible**: Accepts `String`, `&str`, `Cow<str>`, etc.
+- ✅ **Zero cost**: Conversions happen at compile time
+- ✅ **Type safe**: Only accepts types that implement `Into<FieldType>`
+
+**When to use:**
+- ✅ For `String` fields (accept `&str`)
+- ✅ For `PathBuf` fields (accept `&str`, `&Path`)  
+- ✅ For `Vec<T>` fields (accept arrays, slices)
+- ❌ Don't use with `skip_setter` (incompatible)
 
 ## 🔧 How It Works
 

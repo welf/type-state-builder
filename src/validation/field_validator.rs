@@ -232,6 +232,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: false,
+                impl_into: None,
             },
         );
 
@@ -253,6 +254,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: true,
+                impl_into: None,
             },
         );
 
@@ -277,6 +279,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: false,
+                impl_into: None,
             },
         );
 
@@ -297,6 +300,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: true,
+                impl_into: None,
             },
         );
 
@@ -321,6 +325,7 @@ mod tests {
                 setter_name: Some("123invalid".to_string()),
                 setter_prefix: None,
                 skip_setter: false,
+                impl_into: None,
             },
         );
 
@@ -345,6 +350,7 @@ mod tests {
                 setter_name: Some("custom_name".to_string()),
                 setter_prefix: None,
                 skip_setter: true,
+                impl_into: None,
             },
         );
 
@@ -369,6 +375,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: Some("with_".to_string()),
                 skip_setter: true,
+                impl_into: None,
             },
         );
 
@@ -393,6 +400,7 @@ mod tests {
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: true,
+                impl_into: None,
             },
         );
 
@@ -413,6 +421,7 @@ mod tests {
                 setter_name: Some("set_name".to_string()),
                 setter_prefix: None,
                 skip_setter: false,
+                impl_into: None,
             },
         );
 
@@ -433,6 +442,7 @@ mod tests {
                 setter_name: Some("set_name".to_string()),
                 setter_prefix: None,
                 skip_setter: false,
+                impl_into: None,
             },
         );
 
@@ -453,6 +463,7 @@ mod tests {
                 setter_name: Some("custom_name".to_string()),
                 setter_prefix: Some("with_".to_string()),
                 skip_setter: false,
+                impl_into: None,
             },
         );
 

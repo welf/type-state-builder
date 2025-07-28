@@ -382,10 +382,14 @@ impl<'a> RegularBuilderCoordinator<'a> {
 
         // Generate setter for each optional field that should have one
         let struct_setter_prefix = analysis.struct_attributes().get_setter_prefix();
+        let struct_impl_into = analysis.struct_attributes().get_impl_into();
         for optional_field in analysis.optional_fields() {
             if optional_field.should_generate_setter() {
-                let setter_method = optional_field
-                    .generate_setter_method(&syn::parse_quote!(Self), struct_setter_prefix)?;
+                let setter_method = optional_field.generate_setter_method(
+                    &syn::parse_quote!(Self),
+                    struct_setter_prefix,
+                    struct_impl_into,
+                )?;
                 setter_methods.extend(setter_method);
             }
         }

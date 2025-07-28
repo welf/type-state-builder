@@ -100,3 +100,73 @@ impl Default for FieldProcessor {
         Self::new()
     }
 }
+
+/// Resolves the effective `impl_into` setting for a field.
+///
+/// This function determines whether a field's setter should use `impl Into<FieldType>`
+/// parameters by considering both struct-level and field-level `impl_into` settings.
+/// Field-level settings take precedence over struct-level settings.
+///
+/// # Arguments
+///
+/// * `field_impl_into` - The field-level `impl_into` setting (None = inherit from struct)
+/// * `struct_impl_into` - The struct-level `impl_into` setting
+///
+/// # Returns
+///
+/// A `bool` indicating whether the field's setter should use `impl Into<T>` parameters:
+/// - `true` - Setter accepts `impl Into<FieldType>`
+/// - `false` - Setter accepts `FieldType` directly
+///
+/// # Precedence Rules
+///
+/// 1. If field has explicit `impl_into = true/false`, use that value
+/// 2. Otherwise, inherit the struct-level `impl_into` setting
+///
+/// See the crate-level documentation for usage examples.
+pub fn resolve_effective_impl_into(field_impl_into: Option<bool>, struct_impl_into: bool) -> bool {
+    field_impl_into.unwrap_or(struct_impl_into)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_effective_impl_into_field_inherits_struct() {
+        // Field inherits struct setting when field is None
+        assert!(resolve_effective_impl_into(None, true));
+        assert!(!resolve_effective_impl_into(None, false));
+    }
+
+    #[test]
+    fn test_resolve_effective_impl_into_field_overrides_struct() {
+        // Field setting overrides struct setting when field is Some
+        assert!(resolve_effective_impl_into(Some(true), false));
+        assert!(!resolve_effective_impl_into(Some(false), true));
+        assert!(resolve_effective_impl_into(Some(true), true));
+        assert!(!resolve_effective_impl_into(Some(false), false));
+    }
+
+    #[test]
+    fn test_resolve_effective_impl_into_precedence() {
+        // Test all combinations to ensure field-level always takes precedence
+        let test_cases = [
+            // (field_impl_into, struct_impl_into, expected)
+            (None, true, true),          // inherit struct true
+            (None, false, false),        // inherit struct false
+            (Some(true), true, true),    // field true, struct true
+            (Some(true), false, true),   // field true overrides struct false
+            (Some(false), true, false),  // field false overrides struct true
+            (Some(false), false, false), // field false, struct false
+        ];
+
+        for (field_setting, struct_setting, expected) in test_cases {
+            let result = resolve_effective_impl_into(field_setting, struct_setting);
+            assert_eq!(
+                result, expected,
+                "Failed for field_impl_into={field_setting:?}, struct_impl_into={struct_setting}, expected={expected}"
+            );
+        }
+    }
+}
