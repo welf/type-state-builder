@@ -68,7 +68,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-type-state-builder = "0.1.0"
+type-state-builder = "0.2.0"
 ```
 
 ## 🎯 Quick Start
