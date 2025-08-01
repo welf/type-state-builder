@@ -6,12 +6,3 @@ error: TypeStateBuilder only supports structs, not unions
 7 | |     field2: f32,
 8 | | }
   | |_^
-
-error[E0599]: no function or associated item named `builder` found for union `NotAStruct` in the current scope
-  --> tests/ui/union-not-struct.rs:11:33
-   |
-5  | union NotAStruct {
-   | ---------------- function or associated item `builder` not found for this union
-...
-11 |     let _instance = NotAStruct::builder()
-   |                                 ^^^^^^^ function or associated item not found in `NotAStruct`

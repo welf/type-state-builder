@@ -4,7 +4,4 @@ use type_state_builder::TypeStateBuilder;
 #[derive(TypeStateBuilder)]
 struct TupleStruct(String, u32);
 
-fn main() {
-    let _instance = TupleStruct::builder()
-        .build();
-}
+fn main() {}

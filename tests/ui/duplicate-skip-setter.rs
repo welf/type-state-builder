@@ -10,8 +10,4 @@ struct DuplicateSkipSetter {
     count: u32,
 }
 
-fn main() {
-    let _instance = DuplicateSkipSetter::builder()
-        .name("test".to_string())
-        .build();
-}
+fn main() {}

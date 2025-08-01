@@ -1,7 +1,7 @@
-error: Field-level setter_prefix is incompatible with skip_setter
-       note: #[builder(setter_prefix)] and #[builder(skip_setter)] are incompatible
+error: Field-level converter is incompatible with skip_setter
+       note: #[builder(converter)] and #[builder(skip_setter)] are incompatible
        help: remove one of these attributes
- --> tests/ui/skip-setter-with-prefix.rs:3:10
+ --> tests/ui/converter_with_skip_setter.rs:3:10
   |
 3 | #[derive(TypeStateBuilder)]
   |          ^^^^^^^^^^^^^^^^

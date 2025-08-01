@@ -6,8 +6,4 @@ union NotAStruct {
     field1: u32,
     field2: f32,
 }
-
-fn main() {
-    let _instance = NotAStruct::builder()
-        .build();
-}
+fn main() {}

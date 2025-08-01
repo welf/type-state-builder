@@ -88,21 +88,24 @@ impl<'a> FieldValidator<'a> {
     fn validate_required_field_constraints(&self, field: &FieldInfo) -> syn::Result<()> {
         let field_name_str = field.name().to_string();
         let clean_name = strip_raw_identifier_prefix(&field_name_str);
-        let field_type = ErrorMessages::format_field_type(field.field_type());
 
         // Required fields cannot have default values
         if field.has_custom_default() {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::required_field_with_default(&clean_name, &field_type),
+                &format!("Required field '{clean_name}' cannot have a default value"),
+                Some("#[builder(default)] and #[builder(required)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
         // Required fields cannot skip setters
         if !field.should_generate_setter() {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::required_field_skip_setter(&clean_name, &field_type),
+                &format!("Required field '{clean_name}' cannot skip setter generation"),
+                Some("#[builder(skip_setter)] and #[builder(required)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
@@ -121,33 +124,36 @@ impl<'a> FieldValidator<'a> {
     fn validate_skip_setter_constraints(&self, field: &FieldInfo) -> syn::Result<()> {
         let field_name_str = field.name().to_string();
         let clean_name = strip_raw_identifier_prefix(&field_name_str);
-        let field_type = ErrorMessages::format_field_type(field.field_type());
 
         // Fields that skip setters cannot have custom setter names
-        if let Some(setter_name) = &field.attributes().setter_name {
-            return Err(syn::Error::new_spanned(
+        if let Some(_setter_name) = &field.attributes().setter_name {
+            return Err(ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::skip_setter_with_setter_name(&clean_name, setter_name, &field_type),
+                &format!(
+                    "Field '{clean_name}' has conflicting attributes: skip_setter and setter_name"
+                ),
+                Some("#[builder(skip_setter)] and #[builder(setter_name)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
         // Fields that skip setters cannot have setter prefixes
-        if let Some(setter_prefix) = &field.attributes().setter_prefix {
-            return Err(syn::Error::new_spanned(
+        if let Some(_setter_prefix) = &field.attributes().setter_prefix {
+            return Err(ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::skip_setter_with_setter_prefix(
-                    &clean_name,
-                    setter_prefix,
-                    &field_type,
-                ),
+                &format!("Field '{clean_name}' has conflicting attributes: skip_setter and setter_prefix"),
+                Some("#[builder(skip_setter)] and #[builder(setter_prefix)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
         // Fields that skip setters must have default values (custom or Default::default())
         if !field.has_custom_default() && field.is_optional() {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::skip_setter_without_default(&clean_name, &field_type),
+                &format!("Field '{clean_name}' skips setter generation but has no default value"),
+                Some("#[builder(skip_setter)] requires a way to initialize the field"),
+                Some("add #[builder(default = \"...\")] or remove skip_setter"),
             ));
         }
 
@@ -167,9 +173,11 @@ impl<'a> FieldValidator<'a> {
     fn validate_setter_name(&self, setter_name: &str, field: &FieldInfo) -> syn::Result<()> {
         // Try to parse as identifier to ensure it's valid
         syn::parse_str::<Ident>(setter_name).map_err(|_| {
-            syn::Error::new_spanned(
+            ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::invalid_setter_name(setter_name),
+                &format!("Invalid setter name '{setter_name}'"),
+                Some("setter names must be valid Rust identifiers"),
+                Some("use a valid identifier (letters, numbers, underscores, starting with letter/underscore)"),
             )
         })?;
 
@@ -195,9 +203,13 @@ impl<'a> FieldValidator<'a> {
         syn::parse_str::<syn::Expr>(default_value).map_err(|parse_error| {
             let field_name_str = field.name().to_string();
             let clean_name = strip_raw_identifier_prefix(&field_name_str);
-            syn::Error::new_spanned(
+            ErrorMessages::structured_error(
                 field.name(),
-                ErrorMessages::invalid_default_expression(&clean_name, default_value, &parse_error),
+                &format!(
+                    "Invalid default value expression for field '{clean_name}': '{default_value}'"
+                ),
+                Some(&format!("parse error: {parse_error}")),
+                Some("ensure the default value is a valid Rust expression"),
             )
         })?;
 
@@ -233,6 +245,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -255,6 +268,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: true,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -280,6 +294,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -301,6 +316,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: true,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -326,6 +342,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -351,6 +368,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: true,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -376,6 +394,7 @@ mod tests {
                 setter_prefix: Some("with_".to_string()),
                 skip_setter: true,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -401,6 +420,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: true,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -422,6 +442,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -443,6 +464,7 @@ mod tests {
                 setter_prefix: None,
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 
@@ -464,6 +486,7 @@ mod tests {
                 setter_prefix: Some("with_".to_string()),
                 skip_setter: false,
                 impl_into: None,
+                converter: None,
             },
         );
 

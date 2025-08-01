@@ -30,23 +30,34 @@
 //! use type_state_builder::TypeStateBuilder;
 //!
 //! #[derive(TypeStateBuilder)]
+//! #[builder(impl_into)]   // Setters arguments are now `impl Into<FieldType>`
 //! struct User {
 //!     #[builder(required)]
 //!     name: String,
-//!     
+//!
 //!     #[builder(required)]
 //!     email: String,
-//!     
+//!
+//!     #[builder(default = "Some(30)")] // Default value for age
 //!     age: Option<u32>,
-//!     active: bool, // Will use Default::default()
+//!
+//!     #[builder(setter_prefix = "is_")] // The setter is now named `is_active`
+//!     active: bool, // Will use Default::default() if not set
 //! }
 //!
 //! // Usage - this enforces that name and email are set
 //! let user = User::builder()
-//!     .name("Alice".to_string())
-//!     .email("alice@example.com".to_string())
-//!     .age(Some(30))
-//!     .build();
+//!     .name("Alice")              // `impl_into` allows to pass any type that can be converted into String
+//!     .email("alice@example.com") // `impl_into` allows to pass any type that can be converted into String
+//!     // age is not set and defaults to Some(30)
+//!     // active is not set and defaults to false (Default::default())
+//!     .build(); // The `build()` method is available since all required fields are set
+
+//!
+//! assert_eq!(user.name, "Alice".to_string());
+//! assert_eq!(user.email, "alice@example.com".to_string());
+//! assert_eq!(user.age, Some(30));
+//! assert_eq!(user.active, false);
 //! ```
 //!
 //! # Supported Attributes
@@ -62,10 +73,11 @@
 //! - `#[builder(required)]` - Mark field as required
 //! - `#[builder(setter_name = "name")]` - Custom setter method name
 //! - `#[builder(setter_prefix = "prefix_")]` - Custom prefix for setter method name
-//! - `#[builder(default = "expr")]` - Custom default value expression
+//! - `#[builder(default = "value|expression")]` - Custom default value
 //! - `#[builder(skip_setter)]` - Don't generate setter (requires default)
 //! - `#[builder(impl_into)]` - Generate setter with `impl Into<FieldType>` parameter
 //! - `#[builder(impl_into = false)]` - Override struct-level `impl_into` for this field
+//! - `#[builder(converter = |param: InputType| -> FieldType { expression })` - Custom conversion logic for setter input
 //!
 //! # Advanced Examples
 //!
@@ -79,13 +91,13 @@
 //! struct Document {
 //!     #[builder(required)]
 //!     title: String,
-//!     
+//!
 //!     #[builder(required, setter_name = "set_content")]
 //!     content: String,
-//!     
+//!
 //!     #[builder(default = "42")]
 //!     page_count: u32,
-//!     
+//!
 //!     #[builder(default = "String::from(\"draft\")", skip_setter)]
 //!     status: String,
 //! }
@@ -108,10 +120,10 @@
 //! {
 //!     #[builder(required)]
 //!     value: T,
-//!     
+//!
 //!     #[builder(required)]
 //!     name: String,
-//!     
+//!
 //!     tags: Vec<String>,
 //! }
 //!
@@ -133,10 +145,10 @@
 //! struct Config {
 //!     #[builder(required)]
 //!     host: String,
-//!     
+//!
 //!     #[builder(required)]
 //!     port: u16,
-//!     
+//!
 //!     timeout: Option<u32>,
 //! }
 //!
@@ -156,10 +168,10 @@
 //! struct Database {
 //!     #[builder(required)]
 //!     connection_string: String,
-//!     
+//!
 //!     #[builder(required, setter_prefix = "set_")]
 //!     credentials: String,
-//!     
+//!
 //!     #[builder(setter_name = "timeout_seconds")]
 //!     timeout: Option<u32>,
 //! }
@@ -186,10 +198,10 @@
 //! struct ApiClient {
 //!     #[builder(required)]
 //!     base_url: String,
-//!     
+//!
 //!     #[builder(required)]
 //!     api_key: String,
-//!     
+//!
 //!     timeout: Option<u32>,
 //!     user_agent: String, // Uses Default::default()
 //! }
@@ -212,13 +224,13 @@
 //! struct Document {
 //!     #[builder(required)]
 //!     title: String,  // Inherits impl_into = true
-//!     
+//!
 //!     #[builder(required, impl_into = false)]
 //!     content: String,  // Override: requires String directly
-//!     
+//!
 //!     #[builder(impl_into = true)]
 //!     category: Option<String>,  // Explicit impl_into = true
-//!     
+//!
 //!     #[builder(impl_into = false)]
 //!     tags: Vec<String>,  // Override: requires Vec<String> directly
 //! }
@@ -246,16 +258,16 @@
 //! struct CompleteExample {
 //!     #[builder(required)]
 //!     name: String,                        // Inherits: accepts impl Into<String>
-//!     
+//!
 //!     #[builder(required, impl_into = false)]
 //!     id: String,                          // Override: requires String directly
-//!     
+//!
 //!     #[builder(impl_into = true)]
 //!     description: Option<String>,         // Explicit: accepts impl Into<String>
-//!     
+//!
 //!     #[builder(default = "PathBuf::from(\"/tmp\")")]
 //!     work_dir: PathBuf,                   // Inherits: accepts impl Into<PathBuf>
-//!     
+//!
 //!     #[builder(impl_into = false, default = "Vec::new()")]
 //!     tags: Vec<String>,                   // Override: requires Vec<String>
 //! }
@@ -276,6 +288,136 @@
 //! assert_eq!(example.tags, vec!["rust"]);
 //! ```
 //!
+//! ## Custom Conversions with `converter`
+//!
+//! The `converter` attribute allows you to specify custom conversion logic for field setters,
+//! enabling more powerful transformations than `impl_into` can provide. Use closure syntax
+//! to define the conversion function with explicit parameter types.
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct User {
+//!     #[builder(required)]
+//!     name: String,
+//!
+//!     // Normalize email to lowercase and trim whitespace
+//!     #[builder(required, converter = |email: &str| email.trim().to_lowercase())]
+//!     email: String,
+//!
+//!     // Parse comma-separated tags into Vec<String>
+//!     #[builder(converter = |tags: &str| tags.split(',').map(|s| s.trim().to_string()).collect())]
+//!     interests: Vec<String>,
+//!
+//!     // Parse age from string with fallback
+//!     #[builder(converter = |age: &str| age.parse().unwrap_or(0))]
+//!     age: u32,
+//! }
+//!
+//! let user = User::builder()
+//!     .name("Alice".to_string())
+//!     .email("  ALICE@EXAMPLE.COM  ")  // Will be normalized to "alice@example.com"
+//!     .interests("rust, programming, web")  // Parsed to Vec<String>
+//!     .age("25")  // Parsed from string to u32
+//!     .build();
+//!
+//! assert_eq!(user.email, "alice@example.com");
+//! assert_eq!(user.interests, vec!["rust", "programming", "web"]);
+//! assert_eq!(user.age, 25);
+//! ```
+//!
+//! ### Complex Converter Examples
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//! use std::collections::HashMap;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct Config {
+//!     // Convert environment-style boolean strings
+//!     #[builder(converter = |enabled: &str| {
+//!         matches!(enabled.to_lowercase().as_str(), "true" | "1" | "yes" | "on")
+//!     })]
+//!     debug_enabled: bool,
+//!
+//!     // Parse key=value pairs into HashMap
+//!     #[builder(converter = |pairs: &str| {
+//!         pairs.split(',')
+//!              .filter_map(|pair| {
+//!                  let mut split = pair.split('=');
+//!                  Some((split.next()?.trim().to_string(),
+//!                       split.next()?.trim().to_string()))
+//!              })
+//!              .collect()
+//!     })]
+//!     env_vars: HashMap<String, String>,
+//!
+//!     // Transform slice to owned Vec
+//!     #[builder(converter = |hosts: &[&str]| {
+//!         hosts.iter().map(|s| s.to_string()).collect()
+//!     })]
+//!     allowed_hosts: Vec<String>,
+//! }
+//!
+//! let config = Config::builder()
+//!     .debug_enabled("true")
+//!     .env_vars("LOG_LEVEL=debug,PORT=8080")
+//!     .allowed_hosts(&["localhost", "127.0.0.1"])
+//!     .build();
+//!
+//! assert_eq!(config.debug_enabled, true);
+//! assert_eq!(config.env_vars.get("LOG_LEVEL"), Some(&"debug".to_string()));
+//! assert_eq!(config.allowed_hosts, vec!["localhost", "127.0.0.1"]);
+//! ```
+//!
+//! ### Converter with Generics
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct Container<T: Clone + Default> {
+//!     #[builder(required, impl_into)]
+//!     name: String,
+//!
+//!     // Converter works with generic fields too
+//!     #[builder(converter = |items: &[T]| items.into_iter().map(|item| item.clone()).collect())]
+//!     data: Vec<T>,
+//! }
+//!
+//! // Usage with concrete type
+//! let container = Container::builder()
+//!     .name("numbers")        // Convert &str to String thanks to `impl_into`
+//!     .data(&[1, 2, 3, 4, 5]) // Convert &[T] to Vec<T> thanks to `converter`
+//!     .build();               // Available only when all required fields are set
+//!
+//! assert_eq!(container.data, vec![1, 2, 3, 4, 5]);
+//! ```
+//!
+//! ### Converter vs impl_into Comparison
+//!
+//! | Feature | `impl_into` | `converter` |
+//! |---------|-------------|-------------|
+//! | **Type conversions** | Only `Into` trait | Any custom logic |
+//! | **Parsing strings** | ❌ Limited | ✅ Full support |
+//! | **Data validation** | ❌ No | ✅ Custom validation |
+//! | **Complex transformations** | ❌ No | ✅ Full support |
+//! | **Multiple input formats** | ❌ Into only | ✅ Any input type |
+//! | **Performance** | Zero-cost | Depends on logic |
+//! | **Syntax** | Attribute flag | Closure expression |
+//!
+//! **When to use `converter`:**
+//! - Ergonomic setter generation for `Option<String>` fields
+//! - Parsing structured data from strings
+//! - Normalizing or validating input data
+//! - Complex data transformations
+//! - Converting between incompatible types
+//! - Custom business logic in setters
+//!
+//! **Note**: `converter` is incompatible with `skip_setter` and `impl_into` since
+//! they represent different approaches to setter generation.
+//!
 //! ## Optional-Only Structs (Regular Builder)
 //!
 //! ```
@@ -286,10 +428,10 @@
 //! struct Settings {
 //!     debug: bool,
 //!     max_connections: Option<u32>,
-//!     
+//!
 //!     #[builder(default = "\"default.log\".to_string()")]
 //!     log_file: String,
-//!     
+//!
 //!     #[builder(skip_setter, default = "42")]
 //!     magic_number: i32,
 //! }
@@ -324,6 +466,95 @@
 //! struct BadConfig {
 //!     #[builder(required, default = "test")]  // ERROR: Invalid combination
 //!     name: String,
+//! }
+//! ```
+//!
+//! # Invalid Attribute Combinations
+//!
+//! Several attribute combinations are invalid and will produce compile-time errors
+//! with helpful error messages:
+//!
+//! ## skip_setter + setter_name
+//!
+//! You can't name a setter method that doesn't exist:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidSetterName {
+//!     #[builder(skip_setter, setter_name = "custom_name")]  // ERROR: Conflicting attributes
+//!     field: String,
+//! }
+//! ```
+//!
+//! ## skip_setter + setter_prefix
+//!
+//! You can't apply prefixes to non-existent setter methods:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidSetterPrefix {
+//!     #[builder(skip_setter, setter_prefix = "with_")]  // ERROR: Conflicting attributes
+//!     field: String,
+//! }
+//! ```
+//!
+//! ## skip_setter + impl_into
+//!
+//! Skipped setters can't have parameter conversion rules:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidImplInto {
+//!     #[builder(skip_setter, impl_into = true)]  // ERROR: Conflicting attributes
+//!     field: String,
+//! }
+//! ```
+//!
+//! ## skip_setter + converter
+//!
+//! Skipped setters can't have custom conversion logic:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidConverter {
+//!     #[builder(skip_setter, converter = |x: String| x)]  // ERROR: Conflicting attributes
+//!     field: String,
+//! }
+//! ```
+//!
+//! ## converter + impl_into
+//!
+//! Custom converters and `impl_into` are different approaches to parameter handling:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidConverterImplInto {
+//!     #[builder(converter = |x: String| x, impl_into = true)]  // ERROR: Conflicting attributes
+//!     field: String,
+//! }
+//! ```
+//!
+//! ## skip_setter + required
+//!
+//! Required fields must have setter methods:
+//!
+//! ```compile_fail
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder)]
+//! struct InvalidRequired {
+//!     #[builder(skip_setter, required)]  // ERROR: Conflicting attributes
+//!     field: String,
 //! }
 //! ```
 //!

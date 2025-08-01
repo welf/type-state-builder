@@ -1,0 +1,11 @@
+error: Duplicate converter attribute. Only one converter is allowed per field
+ --> tests/ui/duplicate_converter.rs:5:65
+  |
+5 |     #[builder(converter = |value: String| value.to_uppercase(), converter = |value: String| value.to_lowercase())]
+  |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/ui/duplicate_converter.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/ui/duplicate_converter.rs`

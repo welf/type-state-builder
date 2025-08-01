@@ -1,14 +1,7 @@
-error: Required fields cannot have default values. Remove #[builder(default = "...")] or make the field optional by removing #[builder(required)]
+error: Required fields cannot have default values
+       note: #[builder(default)] and #[builder(required)] are incompatible
+       help: remove one of incompatible attributes
  --> tests/ui/required-with-default.rs:7:5
   |
 7 |     name: String,
   |     ^^^^
-
-error[E0599]: no function or associated item named `builder` found for struct `InvalidStruct` in the current scope
-  --> tests/ui/required-with-default.rs:13:36
-   |
-4  | struct InvalidStruct {
-   | -------------------- function or associated item `builder` not found for this struct
-...
-13 |     let _instance = InvalidStruct::builder()
-   |                                    ^^^^^^^ function or associated item not found in `InvalidStruct`

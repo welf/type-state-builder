@@ -15,8 +15,11 @@
 //!
 
 use crate::attributes::{parse_field_attributes, FieldAttributes};
-use crate::utils::field_utils::{resolve_effective_impl_into, DefaultConfig, SetterConfig};
+use crate::utils::field_utils::{
+    resolve_effective_impl_into, resolve_setter_parameter_config, DefaultConfig, SetterConfig,
+};
 use crate::utils::identifiers::strip_raw_identifier_prefix;
+use crate::validation::error_messages::ErrorMessages;
 use quote::quote;
 use std::borrow::Cow;
 use syn::{Ident, Type};
@@ -418,9 +421,13 @@ impl FieldInfo {
         let field_name = self.name();
         let field_type = self.field_type();
 
-        // Check if impl_into is enabled for this field
+        // Determine parameter type and field assignment logic
         let field_impl_into = self.attributes().impl_into;
+        let converter = self.attributes().converter.as_ref();
         let use_impl_into = resolve_effective_impl_into(field_impl_into, struct_impl_into);
+
+        // Use the shared utility to determine parameter configuration
+        let param_config = resolve_setter_parameter_config(field_type, converter, use_impl_into);
 
         // Handle setter method name - for raw identifiers, we use the raw identifier
         let setter_ident = if config.setter_name.starts_with("r#") {
@@ -431,23 +438,20 @@ impl FieldInfo {
         };
 
         let doc_comment = &config.doc_comment;
+        let param_type = param_config.param_type;
+        let field_assignment_expr = param_config.field_assignment_expr;
 
-        // Generate parameter type and assignment based on impl_into setting
-        let (param_type, assignment) = if use_impl_into {
-            // Use impl Into<T> parameter and .into() conversion
-            let param_type = quote! { impl Into<#field_type> };
-            let assignment = quote! { self.#field_name = value.into(); };
-            (param_type, assignment)
-        } else {
-            // Use direct type parameter
-            let param_type = quote! { #field_type };
-            let assignment = quote! { self.#field_name = value; };
-            (param_type, assignment)
+        // Generate assignment statement
+        let assignment = quote! { self.#field_name = #field_assignment_expr; };
+
+        // Generate method signature
+        let method_signature = quote! {
+            pub fn #setter_ident(mut self, value: #param_type) -> #return_type
         };
 
         Ok(quote! {
             #[doc = #doc_comment]
-            pub fn #setter_ident(mut self, value: #param_type) -> #return_type {
+            #method_signature {
                 #assignment
                 self
             }
@@ -484,25 +488,31 @@ impl FieldInfo {
     pub fn validate_configuration(&self) -> syn::Result<()> {
         // Required fields cannot have default values
         if self.is_required() && self.attributes().default_value.is_some() {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 self.name(),
-                "Required fields cannot have default values. Remove #[builder(default = \"...\")] or make the field optional by removing #[builder(required)]",
+                "Required fields cannot have default values",
+                Some("#[builder(default)] and #[builder(required)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
         // Required fields cannot skip setters
         if self.is_required() && self.attributes().skip_setter {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 self.name(),
-                "Required fields cannot skip setters. Remove #[builder(skip_setter)] or make the field optional by removing #[builder(required)]",
+                "Required fields cannot skip setters",
+                Some("#[builder(skip_setter)] and #[builder(required)] are incompatible"),
+                Some("remove one of incompatible attributes"),
             ));
         }
 
         // Fields that skip setters must have default values
         if self.attributes().skip_setter && self.attributes().default_value.is_none() {
-            return Err(syn::Error::new_spanned(
+            return Err(ErrorMessages::structured_error(
                 self.name(),
-                "Fields with #[builder(skip_setter)] must have a default value. Add #[builder(default = \"...\")] or remove skip_setter",
+                "Fields with #[builder(skip_setter)] must have a default value",
+                Some("#[builder(skip_setter)] requires a way to initialize the field"),
+                Some("add #[builder(default = \"...\")] or remove skip_setter"),
             ));
         }
 

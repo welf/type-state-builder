@@ -1,9 +1,9 @@
 [package]
 name = "type-state-builder"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.70.0"
-description = "Type-state builder pattern derive macro with compile-time safety"
+description = "Type-state builder pattern derive macro with compile-time safety and enhanced ergonomics."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/welf/type-state-builder"
 homepage = "https://github.com/welf/type-state-builder"
@@ -25,3 +25,6 @@ proc-macro2 = "1.0"
 trybuild = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
+[features]
+default = []
+ui-tests = []

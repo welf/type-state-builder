@@ -3,12 +3,3 @@ error: Duplicate setter_name attribute. Only one setter_name is allowed per fiel
   |
 7 |     #[builder(setter_name = "first_name")]
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0599]: no function or associated item named `builder` found for struct `DuplicateAttributes` in the current scope
-  --> tests/ui/duplicate-field-attributes.rs:14:42
-   |
-4  | struct DuplicateAttributes {
-   | -------------------------- function or associated item `builder` not found for this struct
-...
-14 |     let _instance = DuplicateAttributes::builder()
-   |                                          ^^^^^^^ function or associated item not found in `DuplicateAttributes`

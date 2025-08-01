@@ -4,7 +4,4 @@ use type_state_builder::TypeStateBuilder;
 #[derive(TypeStateBuilder)]
 struct UnitStruct;
 
-fn main() {
-    let _instance = UnitStruct::builder()
-        .build();
-}
+fn main() {}

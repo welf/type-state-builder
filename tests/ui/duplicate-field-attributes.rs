@@ -10,9 +10,4 @@ struct DuplicateAttributes {
     email: String,
 }
 
-fn main() {
-    let _instance = DuplicateAttributes::builder()
-        .first_name("test".to_string())
-        .email("test@example.com".to_string())
-        .build();
-}
+fn main() {}

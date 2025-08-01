@@ -6,7 +6,7 @@ use type_state_builder::TypeStateBuilder;
 struct ConflictingFieldAttributes {
     #[builder(impl_into, skip_setter, default = "String::new()")]
     name: String,
-    
+
     age: Option<u32>,
 }
 

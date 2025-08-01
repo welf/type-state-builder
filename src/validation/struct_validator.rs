@@ -73,9 +73,11 @@ impl<'a> StructValidator<'a> {
     fn validate_struct_has_fields(&self, analysis: &StructAnalysis) -> syn::Result<()> {
         let total_fields = analysis.required_fields().len() + analysis.optional_fields().len();
         if total_fields == 0 {
-            return Err(syn::Error::new(
+            return Err(ErrorMessages::structured_error_span(
                 proc_macro2::Span::call_site(),
-                ErrorMessages::empty_struct(&analysis.struct_name().to_string()),
+                &format!("Struct '{}' has no fields", analysis.struct_name()),
+                Some("builder generation requires at least one field to be meaningful"),
+                Some("add some fields to your struct"),
             ));
         }
         Ok(())
@@ -141,15 +143,11 @@ impl<'a> StructValidator<'a> {
                 let field_name = field.clean_name();
 
                 if let Some(existing_field) = setter_names.get(&setter_name) {
-                    let field_type = ErrorMessages::format_field_type(field.field_type());
-                    return Err(syn::Error::new_spanned(
+                    return Err(ErrorMessages::structured_error(
                         field.name(),
-                        ErrorMessages::setter_name_conflict(
-                            &setter_name,
-                            &field_name,
-                            existing_field,
-                            &field_type,
-                        ),
+                        &format!("Setter name conflict: '{setter_name}' is used by both field '{field_name}' and field '{existing_field}'"),
+                        Some("each setter method must have a unique name"),
+                        Some("use #[builder(setter_name = \"unique_name\")] on one of the fields"),
                     ));
                 }
 
@@ -180,15 +178,11 @@ impl<'a> StructValidator<'a> {
                 let setter_name = field.setter_name();
 
                 if setter_name == build_method_name {
-                    let field_type = ErrorMessages::format_field_type(field.field_type());
-                    return Err(syn::Error::new(
+                    return Err(ErrorMessages::structured_error_span(
                         proc_macro2::Span::call_site(),
-                        ErrorMessages::build_method_name_conflict(
-                            build_method_name,
-                            &field.clean_name(),
-                            &analysis.struct_name().to_string(),
-                            &field_type,
-                        ),
+                        &format!("Build method name '{build_method_name}' conflicts with setter method for field '{}'", field.clean_name()),
+                        Some("the build method and setter methods must have unique names"),
+                        Some("change the build method name with #[builder(build_method = \"create\")] or the setter name"),
                     ));
                 }
             }
@@ -213,9 +207,11 @@ impl<'a> StructValidator<'a> {
         // Validate that build method name is reasonable
         let build_method_name = analysis.struct_attributes().get_build_method_name();
         if build_method_name.is_empty() {
-            return Err(syn::Error::new(
+            return Err(ErrorMessages::structured_error_span(
                 proc_macro2::Span::call_site(),
-                ErrorMessages::empty_attribute_value("build_method"),
+                "build_method cannot be empty",
+                Some("provide a non-empty value for the build_method attribute"),
+                Some("example: #[builder(build_method = \"create\")]"),
             ));
         }
 

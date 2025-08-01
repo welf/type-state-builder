@@ -21,6 +21,7 @@ and intuitive API and developer-friendly compilation errors.
   - [🏷️ Custom Setter Names](#️-custom-setter-names)
   - [🎯 Setter Prefixes](#-setter-prefixes)
   - [🔄 Ergonomic Conversions](#-ergonomic-conversions)
+  - [🔧 Custom Conversions](#-custom-conversions-with-converter)
   - [🏗️ Custom Build Method](#️-custom-build-method)
   - [🧬 Generics Support](#-generics-support)
 - [📋 Complete Attribute Reference](#-complete-attribute-reference)
@@ -68,7 +69,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-type-state-builder = "0.2.0"
+type-state-builder = "0.3.0"
 ```
 
 ## 🎯 Quick Start
@@ -77,17 +78,29 @@ type-state-builder = "0.2.0"
 use type_state_builder::TypeStateBuilder;
 
 #[derive(TypeStateBuilder, Debug)]
-#[builder(impl_into)]  // Enable ergonomic conversions for all setters
+#[builder(impl_into)]       // Enable ergonomic conversions for all setters
 struct User {
-    #[builder(required)]
-    name: String,
+    #[builder(required)]    // Method build() is unavailable until this field is set
+    name: String,           // Setter accepts impl Into<String> for ergonomic usage
 
-    #[builder(required)]
-    email: String,
+    #[builder(required)]    // Method build() is unavailable until this field is set
+    email: String,          // Setter accepts impl Into<String> for ergonomic usage
 
-    age: Option<u32>, // If not set, defaults to None
-    phone: Option<String>, // If not set, defaults to None
-    friends: Vec<String>, // If not set, defaults to an empty vector
+    #[builder(
+        converter = |age: u32| Some(age)),  // Custom conversion for setter age for ergonomic usage
+        default = "18"                      // If not set, defaults to 18
+    )]
+    age: Option<u32>,
+
+    #[converter = |phone: &str| Some(phone.to_string())] // Convert &str to Option<String>
+    phone: Option<String>,                               // If not set, defaults to None (Default::default())
+
+    #[builder(converter = |friends: Vec<&str>|           // Convert Vec<&str> to Vec<String>
+        friends
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect())]
+    friends: Vec<String>,                                // If not set, defaults to an empty vector (Default::default())
 }
 
 fn main() {
@@ -95,8 +108,9 @@ fn main() {
     let user = User::builder()
         .name("Alice")                      // &str -> String via Into
         .email("alice@example.com")         // &str -> String via Into
-        .age(Some(30))
-        .friends(vec!["Bob".to_string(), "Charlie".to_string()])
+        .age(30)                            // u32 -> Option<u32> via converter
+        .phone("123-456-7890")              // &str -> Option<String> via converter
+        .friends(vec!["Bob", "Charlie"])    // Vec<&str> -> Vec<String> via converter
         .build();
 
     println!("{user:?}");
@@ -105,7 +119,10 @@ fn main() {
     let user2 = User::builder()
         .name("Bob")                        // &str -> String via Into
         .email("bob@example.com")           // &str -> String via Into
-        .build();
+        // age is optional, defaults to 18
+        // phone is optional, defaults to None
+        // friends is optional, defaults to an empty vector
+        .build();                           // build() is available since all required fields are set
 
     println!("{user2:?}");
 }
@@ -118,8 +135,10 @@ fn main() {
 The type-state pattern ensures that:
 
 - **Required fields must be set** before calling `build()`
-- **Missing required fields** cause compile-time errors
+- **Missing required fields** cause friendly compile-time errors
 - **Missing optional fields** default to their `Default` trait values or to the user-defined defaults
+- **Ergonomic API** with `impl Into<T>` for setters, allowing you to pass `&str`, `&[T]`, etc. directly
+- **Custom conversion logic** with `converter` for advanced transformations for setters
 - **No runtime panics** due to incomplete builders
 - **IDE support** with accurate autocomplete and error messages
 
@@ -130,6 +149,8 @@ The type-state pattern ensures that:
 Mark fields as required with `#[builder(required)]`:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct Config {
     #[builder(required)]
@@ -154,6 +175,8 @@ let config = Config::builder()
 Provide custom default values for optional fields:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct DatabaseConfig {
     #[builder(required)]
@@ -183,6 +206,7 @@ Some fields should only use their default value and not have setters:
 
 ```rust
 use uuid::Uuid;
+use type_state_builder::TypeStateBuilder;
 
 #[derive(TypeStateBuilder)]
 struct Document {
@@ -211,6 +235,8 @@ let doc = Document::builder()
 Customize individual setter method names:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct Person {
     #[builder(required, setter_name = "full_name")]
@@ -235,6 +261,8 @@ Add consistent prefixes to all setter methods:
 Apply a prefix to all setters in the struct:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(setter_prefix = "with_")]
 struct ServerConfig {
@@ -259,6 +287,8 @@ let config = ServerConfig::builder()
 Field-level prefixes take precedence over struct-level prefixes:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(setter_prefix = "with_")]
 struct ApiClient {
@@ -280,13 +310,16 @@ let client = ApiClient::builder()
 
 ### 🔄 Ergonomic Conversions
 
-The `impl_into` attribute generates setter methods that accept `impl Into<FieldType>` parameters, allowing for more ergonomic API usage by automatically converting compatible types.
+The `impl_into` attribute generates setter methods that accept `impl Into<FieldType>` parameters, allowing for more
+ergonomic API usage by automatically converting compatible types.
 
 #### Struct-Level `impl_into`
 
 Apply `impl_into` to all setters in the struct:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(impl_into)]
 struct ApiClient {
@@ -314,6 +347,8 @@ let client = ApiClient::builder()
 Field-level `impl_into` settings override struct-level defaults:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(impl_into)]  // Default for all fields
 struct Document {
@@ -339,18 +374,204 @@ let doc = Document::builder()
 ```
 
 **Key Benefits:**
+
 - ✅ **More ergonomic**: Use `"string"` instead of `"string".to_string()`
 - ✅ **Flexible control**: Apply globally or selectively
 - ✅ **Type safety**: Maintains compile-time guarantees while improving ergonomics
 - ✅ **Zero cost**: Conversions happen at compile time
 
-**Important Note:** `impl_into` is incompatible with `skip_setter` since skipped fields don't have setter methods generated.
+**Important Note:** `impl_into` is incompatible with `skip_setter` since skipped fields don't have setter methods
+generated.
+
+### 🔧 Custom Conversions with `converter`
+
+The `converter` attribute provides powerful custom transformation logic for field setters, enabling more advanced
+conversions than `impl_into` can provide. Unlike `impl_into` which relies on the `Into` trait, `converter` allows you to
+specify arbitrary transformation logic using closure expressions.
+
+#### Improved Ergonomics for Option Fields
+
+One of the most useful converter applications is improving ergonomics for `Option<T>` fields:
+
+```rust
+use type_state_builder::TypeStateBuilder;
+
+#[derive(TypeStateBuilder, Debug)]
+struct UserProfile {
+    #[builder(required)]
+    username: String,
+
+    // Without converter: must use Some("value".to_string())
+    bio: Option<String>,
+
+    // With converter: can pass string literals directly
+    #[builder(converter = |value: &str| Some(value.to_string()))]
+    display_name: Option<String>,
+
+    #[builder(converter = |value: &str| Some(value.to_string()))]
+    location: Option<String>,
+}
+
+let profile = UserProfile::builder()
+    .username("alice".to_string())
+    .bio(Some("Software developer".to_string()))      // Verbose without converter
+    .display_name("Alice Smith")                       // Clean with converter!
+    .location("San Francisco")                         // Clean with converter!
+    .build();
+
+assert_eq!(profile.display_name, Some("Alice Smith".to_string()));
+assert_eq!(profile.location, Some("San Francisco".to_string()));
+```
+
+#### Basic Converter Usage
+
+Use closure syntax to define custom conversion logic with explicit parameter types:
+
+```rust
+use type_state_builder::TypeStateBuilder;
+
+#[derive(TypeStateBuilder, Debug)]
+struct User {
+    #[builder(required)]
+    name: String,
+
+    // Normalize email to lowercase and trim whitespace
+    #[builder(required, converter = |email: &str| email.trim().to_lowercase())]
+    email: String,
+
+    // Parse comma-separated tags into Vec<String>
+    #[builder(converter = |tags: &str| tags.split(',').map(|s| s.trim().to_string()).collect())]
+    interests: Vec<String>,
+
+    // Parse age from string with fallback
+    #[builder(converter = |age_str: &str| age_str.parse().unwrap_or(0))]
+    age: u32,
+}
+
+let user = User::builder()
+    .name("Alice".to_string())
+    .email("  ALICE@EXAMPLE.COM  ")  // Will be normalized to "alice@example.com"
+    .interests("rust, programming, web")  // Parsed to Vec<String>
+    .age("25")  // Parsed from string to u32
+    .build();
+
+assert_eq!(user.email, "alice@example.com");
+assert_eq!(user.interests, vec!["rust", "programming", "web"]);
+assert_eq!(user.age, 25);
+```
+
+#### Advanced Converter Examples
+
+Converters support complex transformation logic:
+
+```rust
+use std::collections::HashMap;
+use type_state_builder::TypeStateBuilder;
+
+#[derive(TypeStateBuilder, Debug)]
+struct Config {
+    // Convert environment-style boolean strings
+    #[builder(converter = |enabled: &str| {
+        matches!(enabled.to_lowercase().as_str(), "true" | "1" | "yes" | "on")
+    })]
+    debug_enabled: bool,
+
+    // Parse key=value pairs into HashMap
+    #[builder(converter = |pairs: &str| {
+        pairs.split(',')
+             .filter_map(|pair| {
+                 let mut split = pair.split('=');
+                 Some((split.next()?.trim().to_string(),
+                      split.next()?.trim().to_string()))
+             })
+             .collect()
+    })]
+    env_vars: HashMap<String, String>,
+
+    // Transform slice to owned Vec
+    #[builder(converter = |hosts: &[&str]| {
+        hosts.iter().map(|s| s.to_string()).collect()
+    })]
+    allowed_hosts: Vec<String>,
+}
+
+let config = Config::builder()
+    .debug_enabled("true")
+    .env_vars("LOG_LEVEL=debug,PORT=8080")
+    .allowed_hosts(&["localhost", "127.0.0.1"])
+    .build();
+
+assert_eq!(config.debug_enabled, true);
+assert_eq!(config.env_vars.get("LOG_LEVEL"), Some(&"debug".to_string()));
+assert_eq!(config.allowed_hosts, vec!["localhost", "127.0.0.1"]);
+```
+
+#### Converter vs impl_into Comparison
+
+| Feature                     | `impl_into`       | `converter`          |
+| --------------------------- | ----------------- | -------------------- |
+| **Type conversions**        | Only `Into` trait | Any custom logic     |
+| **Parsing strings**         | ❌ Limited        | ✅ Full support      |
+| **Data validation**         | ❌ No             | ✅ Custom validation |
+| **Complex transformations** | ❌ No             | ✅ Full support      |
+| **Multiple input formats**  | ❌ Into only      | ✅ Any input type    |
+| **Performance**             | Zero-cost         | Depends on logic     |
+| **Syntax**                  | Attribute flag    | Closure expression   |
+
+#### When to Use `converter`
+
+**Use `converter` when:**
+
+- ✅ **Improving Option<T> ergonomics**: `|value: &str| Some(value.to_string())` instead of `Some(value.to_string())`
+- ✅ Parsing structured data from strings
+- ✅ Normalizing or validating input data
+- ✅ Complex data transformations
+- ✅ Converting between incompatible types
+- ✅ Custom business logic in setters
+
+**Use `impl_into` when:**
+
+- ✅ Simple type conversions (String/&str, PathBuf/&Path)
+- ✅ The Into trait already provides the conversion you need
+- ✅ You want zero-cost abstractions
+
+#### Converter Syntax and Benefits
+
+**Important:** The `converter` attribute requires closure expressions, **not function references**:
+
+```rust,ignore
+// ✅ Correct - inline closure expression
+#[builder(converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
+tags: Vec<String>,
+
+// ❌ Incorrect - cannot reference external functions
+// #[builder(converter = some_function)] // This doesn't work!
+```
+
+**Why closure expressions?**
+
+The closure syntax provides several benefits:
+
+- ✅ **IDE Support**: Full autocomplete, syntax highlighting, and type checking
+- ✅ **Type Inference**: Parameter types are explicitly declared and validated
+- ✅ **Compile-Time Validation**: Syntax errors caught immediately
+- ✅ **Refactoring Safety**: Changes are tracked by your IDE and compiler
+- ✅ **Documentation**: The conversion logic is visible at the field definition
+
+#### Important Notes
+
+- **Default values** must be passed as string literals: `#[builder(default = "Vec::new()")]`
+- **Converter expressions** use closure syntax: `#[builder(converter = |param: Type| expression)]`
+- `converter` is incompatible with `skip_setter` and `impl_into` (different approaches to setter generation)
+- The closure parameter type must be explicitly specified for proper code generation
 
 ### 🏗️ Custom Build Method
 
 Customize the name of the build method:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(build_method = "create")]
 struct User {
@@ -370,6 +591,8 @@ let user = User::builder()
 TypeStateBuilder works seamlessly with generic types, lifetimes, and complex bounds:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder, Debug)]
 struct Container<T, U>
 where
@@ -395,6 +618,8 @@ let container = Container::<String, i32>::builder()
 #### Lifetime Support
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder, Debug)]
 struct Document<'a> {
     #[builder(required)]
@@ -466,6 +691,8 @@ These descriptive error messages help you:
 Applied to the struct itself:
 
 ```rust,ignore
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 #[builder(
     build_method = "create",        // Custom build method name
@@ -480,6 +707,8 @@ struct MyStruct { /* ... */ }
 Applied to individual fields:
 
 ```rust,ignore
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct MyStruct {
     // Available attributes (WARNING: not all combinations are valid):
@@ -487,10 +716,11 @@ struct MyStruct {
         required,                           // Mark field as required
         setter_name = "custom_name",        // Custom setter method name
         setter_prefix = "set_",             // Prefix for this setter (overrides struct-level)
-        default = "42",                     // Custom default value expression
+        default = "42",                     // Custom default value expression (string literal)
         skip_setter,                        // Don't generate a setter method
         impl_into,                          // Generate setter with impl Into<T> parameter
-        impl_into = false                   // Override struct-level impl_into for this field
+        impl_into = false,                  // Override struct-level impl_into for this field
+        converter = |param: Type| expr      // Custom conversion logic (closure expression)
     )]
     field: i32,
 }
@@ -501,6 +731,8 @@ struct MyStruct {
 Some attributes work together, others are mutually exclusive:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct Example {
     // ✅ Valid combinations
@@ -513,16 +745,22 @@ struct Example {
     #[builder(default = "Uuid::new_v4()", skip_setter)]
     id: String,
 
+    #[builder(converter = |value: &str| value.trim().to_string(), setter+prefix = "with_")]
+    description: String,
+
     // ❌ Invalid combinations (compile errors)
-    // #[builder(required, default = "0")]          // Required fields can't have defaults
-    // #[builder(required, skip_setter)]            // Required fields need setters
-    // #[builder(setter_prefix = "with_", skip_setter)] // Can't prefix skipped setters
-    // #[builder(impl_into, skip_setter)]           // Can't use impl_into with skipped setters
+    // #[builder(required, default = "0")]          // Required fields can't have defaults (ambiguous)
+    // #[builder(required, skip_setter)]            // Required fields need setters (ambiguous)
+    // #[builder(setter_prefix = "with_", skip_setter)] // Can't prefix skipped setters (ambiguous)
+    // #[builder(impl_into, skip_setter)]           // Can't use impl_into with skipped setters (ambiguous)
+    // #[builder(converter = |x| x, skip_setter)]   // Can't use converter with skipped setters (ambiguous)
+    // #[builder(converter = |x| x, impl_into)]     // Can't use converter with impl_into (ambiguous)
 
     // ❌ Duplicate attributes (compile errors)
     // #[builder(required, required)]               // Duplicate 'required' attribute
     // #[builder(setter_name = "name1", setter_name = "name2")] // Duplicate 'setter_name'
     // #[builder(default = "1", default = "2")]     // Duplicate 'default' attribute
+    // #[builder(converter = |x| x, converter = |y| y)] // Duplicate 'converter' attribute
 }
 ```
 
@@ -578,6 +816,8 @@ TypeStateBuilder automatically chooses the best builder pattern based on your st
 Used when your struct has required fields. Provides compile-time safety:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct User {
     #[builder(required)]
@@ -602,6 +842,8 @@ let user = User::builder()  // Initial state: neither field set
 Used when your struct has only optional fields. Immediate `build()` availability:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct Config {
     timeout: Option<u32>, // Defaults to Default::default(), (`None` if not set)
@@ -826,6 +1068,8 @@ fn main() {
 **A:** Absolutely! That's the main use case:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct MixedStruct {
     #[builder(required)] must_set: String,
@@ -840,6 +1084,8 @@ struct MixedStruct {
 **A:** Use optional fields and set them based on conditions:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct ConditionalConfig {
     #[builder(required)]
@@ -860,37 +1106,48 @@ if is_debug {
 let config = builder.build();
 ```
 
-### Q: What's the difference between regular setters and `impl_into` setters?
+### Q: What's the difference between regular setters, `impl_into`, and `converter`?
 
-**A:** Regular setters require exact type matching, while `impl_into` setters accept any type that implements `Into<FieldType>`:
+**A:** Each provides different levels of flexibility and functionality:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct Example {
     #[builder(required)]
-    name: String,
-    
-    #[builder(required, impl_into)]  
-    title: String,
+    name: String,                    // Regular: exact type matching
+
+    #[builder(required, impl_into)]
+    title: String,                   // impl_into: Into trait conversions
+
+    #[builder(required, converter = |email: &str| email.trim().to_lowercase())]
+    email: String,                   // converter: custom transformation logic
 }
 
 let example = Example::builder()
     .name("Alice".to_string())       // Regular: must use String
-    .title("Engineer")               // impl_into: can use &str
+    .title("Engineer")               // impl_into: can use &str via Into
+    .email("  ALICE@EXAMPLE.COM  ")  // converter: custom normalization
     .build();
+
+assert_eq!(example.email, "alice@example.com"); // Normalized!
 ```
 
-**Benefits of `impl_into`:**
-- ✅ **More ergonomic**: Use `"string"` instead of `"string".to_string()`  
-- ✅ **Flexible**: Accepts `String`, `&str`, `Cow<str>`, etc.
-- ✅ **Zero cost**: Conversions happen at compile time
-- ✅ **Type safe**: Only accepts types that implement `Into<FieldType>`
+**Comparison:**
 
-**When to use:**
-- ✅ For `String` fields (accept `&str`)
-- ✅ For `PathBuf` fields (accept `&str`, `&Path`)  
-- ✅ For `Vec<T>` fields (accept arrays, slices)
-- ❌ Don't use with `skip_setter` (incompatible)
+| Feature              | Regular     | `impl_into`    | `converter`        |
+| -------------------- | ----------- | -------------- | ------------------ |
+| **Type flexibility** | Exact match | Into trait     | Any input type     |
+| **Custom logic**     | ❌ No       | ❌ No          | ✅ Full support    |
+| **Performance**      | Zero-cost   | Zero-cost      | Depends on logic   |
+| **Syntax**           | Simple      | Attribute flag | Closure expression |
+
+**When to use each:**
+
+- **Regular**: When you want exact type control
+- **`impl_into`**: For simple ergonomic conversions (String/&str, PathBuf/&Path)
+- **`converter`**: For parsing, validation, normalization, or complex transformations
 
 ## 🔧 How It Works
 
@@ -902,6 +1159,8 @@ When you have required fields, TypeStateBuilder generates multiple builder types
 this example struct:
 
 ```rust
+use type_state_builder::TypeStateBuilder;
+
 #[derive(TypeStateBuilder)]
 struct User {
     #[builder(required)]

@@ -131,4 +131,50 @@ fn main() {
     println!("✅ Zero cost: Conversions happen at compile time");
     println!("✅ Type safe: Only accepts types that implement Into<FieldType>");
     println!("✅ Optional override: Field-level settings can override struct-level defaults");
+
+    // Demonstrate converter for advanced transformations beyond impl_into
+    #[derive(TypeStateBuilder, Debug, PartialEq)]
+    struct ContactInfo {
+        #[builder(required, impl_into)]
+        name: String, // impl_into: accepts &str, String, etc.
+
+        // converter allows custom transformation logic that impl_into cannot provide
+        #[builder(required, converter = |email: &str| email.trim().to_lowercase())]
+        email: String, // Normalize email (trim + lowercase)
+
+        // Parse comma-separated tags - impl_into can't parse strings like this
+        #[builder(converter = |tags: &str| tags.split(',').map(|s| s.trim().to_string()).collect())]
+        tags: Vec<String>,
+
+        // Parse age from string - more flexible than impl_into
+        #[builder(converter = |age: &str| age.parse().unwrap_or(0))]
+        age: u32,
+    }
+
+    println!("\n=== Converter vs impl_into comparison ===");
+
+    let contact = ContactInfo::builder()
+        .name("Alice") // impl_into: &str -> String
+        .email("  ALICE@EXAMPLE.COM  ") // converter: normalize email
+        .tags("developer, rust, backend") // converter: parse comma-separated
+        .age("25") // converter: parse string to number
+        .build();
+
+    println!("{contact:#?}");
+
+    assert_eq!(contact.name, "Alice");
+    assert_eq!(contact.email, "alice@example.com"); // Normalized!
+    assert_eq!(contact.tags, vec!["developer", "rust", "backend"]); // Parsed!
+    assert_eq!(contact.age, 25); // Converted from string!
+
+    println!("\n=== When to use impl_into vs converter ===");
+    println!("📋 Use `impl_into` when:");
+    println!("   • You want simple type conversions (String/&str, PathBuf/&Path)");
+    println!("   • The Into trait already provides the conversion you need");
+    println!("   • You want zero-cost abstractions");
+    println!("   • You want zero-cost abstractions\n");
+    println!("🔧 Use `converter` when:");
+    println!("   • You need custom transformation logic (parsing, validation, normalization)");
+    println!("   • You want to parse structured data from strings");
+    println!("   • You need conversions that Into trait cannot provide");
 }

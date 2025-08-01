@@ -3,12 +3,3 @@ error: TypeStateBuilder only supports structs with named fields
   |
 5 | struct TupleStruct(String, u32);
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0599]: no function or associated item named `builder` found for struct `TupleStruct` in the current scope
- --> tests/ui/tuple-struct.rs:8:34
-  |
-5 | struct TupleStruct(String, u32);
-  | ------------------ function or associated item `builder` not found for this struct
-...
-8 |     let _instance = TupleStruct::builder()
-  |                                  ^^^^^^^ function or associated item not found in `TupleStruct`

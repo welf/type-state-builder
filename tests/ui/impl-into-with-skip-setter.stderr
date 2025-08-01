@@ -1,4 +1,6 @@
-error: Field-level impl_into is incompatible with skip_setter. Remove one of these attributes.
+error: Field-level impl_into is incompatible with skip_setter
+       note: #[builder(impl_into)] and #[builder(skip_setter)] are incompatible
+       help: remove one of these attributes
  --> tests/ui/impl-into-with-skip-setter.rs:5:10
   |
 5 | #[derive(TypeStateBuilder)]

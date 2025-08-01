@@ -15,7 +15,6 @@
 //! # Module Organization
 //!
 //! - [`tokens`]: Core token generation utilities and the `TokenGenerator`
-//! - [`templates`]: Template-based code generation system for maintainable patterns
 //! - [`type_state_builder`]: Type-state builder pattern implementation
 //! - [`regular_builder`]: Simple builder pattern for optional-only structs
 //!

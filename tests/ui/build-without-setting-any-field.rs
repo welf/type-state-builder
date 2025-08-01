@@ -10,7 +10,6 @@ struct Person {
 }
 
 fn main() {
-    // This should fail to compile because no fields are set at all
-    // Error: missing required fields 'name' and 'age'
+    // This should fail: trying to build without setting any required fields
     let person = Person::builder().build();
 }

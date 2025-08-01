@@ -50,7 +50,7 @@
 
 use crate::analysis::StructAnalysis;
 use crate::generation::TokenGenerator;
-use crate::utils::field_utils::resolve_effective_impl_into;
+use crate::utils::field_utils::{resolve_effective_impl_into, resolve_setter_parameter_config};
 use crate::utils::identifiers::{snake_case_to_pascal_case, strip_raw_identifier_prefix};
 use quote::quote;
 use syn::Ident;
@@ -247,7 +247,7 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
     /// Generates field declarations for a builder in a specific state.
     ///
     /// Fields are either stored as their actual type (if set in this state)
-    /// or as Option<Type> (if not yet set).
+    /// or as `Option<Type>` (if not yet set).
     ///
     /// # Arguments
     ///
@@ -533,54 +533,88 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             Some("This method transitions the builder to a new state where this field is set."),
         );
 
-        // Check if impl_into is enabled for this field
+        // Determine parameter type and field assignment logic
         let struct_impl_into = self
             .token_generator
             .analysis()
             .struct_attributes()
             .get_impl_into();
         let field_impl_into = field.attributes().impl_into;
+        let converter = field.attributes().converter.as_ref();
         let use_impl_into = resolve_effective_impl_into(field_impl_into, struct_impl_into);
 
-        // Generate parameter type and field assignments based on impl_into setting
-        let (param_type, field_assignments) = if use_impl_into {
-            // Use impl Into<T> parameter and .into() conversion
-            let param_type = quote! { impl Into<#field_type> };
-            let field_assignments =
-                self.generate_field_assignments_for_transition_with_into(field_index)?;
-            (param_type, field_assignments)
+        // Use the shared utility to determine parameter configuration
+        let param_config = resolve_setter_parameter_config(field_type, converter, use_impl_into);
+
+        let param_type = param_config.param_type;
+
+        // Generate method signature and body based on setter type
+        let (method_signature, method_body) = if let Some(converter_expr) = converter {
+            // Custom converter - generate a setter that applies the closure expression
+            let signature = quote! {
+                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
+            };
+
+            // For custom converters, generate field assignments using the closure expression
+            let field_assignments = self.generate_field_assignments_for_transition_with_expr(
+                field_index,
+                &quote! { (#converter_expr)(value) },
+            )?;
+
+            let body = quote! {
+                #output_builder_ident {
+                    #field_assignments
+                }
+            };
+            (signature, body)
         } else {
-            // Use direct type parameter
-            let param_type = quote! { #field_type };
-            let field_assignments = self.generate_field_assignments_for_transition(field_index)?;
-            (param_type, field_assignments)
+            // Regular or impl_into setter
+            let signature = quote! {
+                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
+            };
+
+            // Generate field assignments for regular setters
+            let field_assignments = self.generate_field_assignments_for_transition_with_expr(
+                field_index,
+                &param_config.field_assignment_expr,
+            )?;
+
+            let body = quote! {
+                #output_builder_ident {
+                    #field_assignments
+                }
+            };
+            (signature, body)
         };
 
         Ok(quote! {
             impl #impl_generics #input_builder_ident #type_generics #where_clause {
                 #doc
-                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics {
-                    #output_builder_ident {
-                        #field_assignments
-                    }
+                #method_signature {
+                    #method_body
                 }
             }
         })
     }
 
-    /// Generates field assignments for a state transition.
+    /// Generates field assignments for a state transition with a custom field assignment expression.
+    ///
+    /// This is a flexible version that allows specifying exactly how the field being set
+    /// should be assigned. It can handle regular assignment, .into() conversion, or
+    /// custom function calls.
     ///
     /// # Arguments
     ///
     /// * `setting_field_index` - Index of the field being set
-    /// * `current_state` - The current builder state
+    /// * `field_assignment_expr` - The expression to use for the field being set
     ///
     /// # Returns
     ///
     /// A `syn::Result<proc_macro2::TokenStream>` containing field assignment code.
-    fn generate_field_assignments_for_transition(
+    fn generate_field_assignments_for_transition_with_expr(
         &self,
         setting_field_index: usize,
+        field_assignment_expr: &proc_macro2::TokenStream,
     ) -> syn::Result<proc_macro2::TokenStream> {
         let mut assignments = proc_macro2::TokenStream::new();
         let analysis = self.token_generator.analysis();
@@ -590,66 +624,9 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             let field_name = required_field.name();
 
             if field_index == setting_field_index {
-                // This is the field being set
+                // This is the field being set - use the provided expression
                 assignments.extend(quote! {
-                    #field_name: value,
-                });
-            } else {
-                // Copy from existing state
-                assignments.extend(quote! {
-                    #field_name: self.#field_name,
-                });
-            }
-        }
-
-        // Copy all optional fields
-        for optional_field in analysis.optional_fields() {
-            let field_name = optional_field.name();
-            assignments.extend(quote! {
-                #field_name: self.#field_name,
-            });
-        }
-
-        // Copy PhantomData if present
-        if analysis.needs_phantom_data() {
-            let marker_name = self.token_generator.get_phantom_data_field_name();
-            let marker_ident = syn::parse_str::<Ident>(marker_name)?;
-            assignments.extend(quote! {
-                #marker_ident: self.#marker_ident,
-            });
-        }
-
-        Ok(assignments)
-    }
-
-    /// Generates field assignments for a state transition with `.into()` conversion.
-    ///
-    /// This is similar to `generate_field_assignments_for_transition` but uses
-    /// `value.into()` for the field being set, which is used when the field
-    /// has `impl_into` enabled.
-    ///
-    /// # Arguments
-    ///
-    /// * `setting_field_index` - Index of the field being set
-    ///
-    /// # Returns
-    ///
-    /// A `syn::Result<proc_macro2::TokenStream>` containing field assignment code.
-    fn generate_field_assignments_for_transition_with_into(
-        &self,
-        setting_field_index: usize,
-    ) -> syn::Result<proc_macro2::TokenStream> {
-        let mut assignments = proc_macro2::TokenStream::new();
-        let analysis = self.token_generator.analysis();
-
-        // Handle required fields
-        for (field_index, required_field) in analysis.required_fields().iter().enumerate() {
-            let field_name = required_field.name();
-
-            if field_index == setting_field_index {
-                // This is the field being set - use .into() conversion
-                assignments.extend(quote! {
-                    #field_name: value.into(),
+                    #field_name: #field_assignment_expr,
                 });
             } else {
                 // Copy from existing state

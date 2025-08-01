@@ -8,8 +8,11 @@
 //!
 //! - `required` - Marks a field as required in the builder pattern
 //! - `setter_name = "name"` - Specifies a custom name for the setter method
+//! - `setter_prefix = "prefix_"` - Specifies a custom prefix for the setter method
 //! - `default = "expression"` - Provides a custom default value expression
 //! - `skip_setter` - Prevents generation of a setter method for this field
+//! - `impl_into` - Uses `impl Into<FieldType>` parameters for ergonomic setters
+//! - `converter = |value: InputType| expression` - Custom conversion logic using closures
 //!
 //! # Attribute Validation
 //!
@@ -17,7 +20,26 @@
 //! - Required fields cannot have default values
 //! - Required fields cannot skip setter generation
 //! - Fields that skip setters must have default values
+//! - `converter` is incompatible with `skip_setter` and `impl_into`
+//! - `impl_into` is incompatible with `skip_setter`
+//! - Setter prefixes are incompatible with `skip_setter`
 //!
+//! # Converter Attribute
+//!
+//! The `converter` attribute allows custom transformation logic for field values:
+//!
+//! ```rust,ignore
+//! #[derive(TypeStateBuilder)]
+//! struct MyStruct {
+//!     #[builder(converter = |values: Vec<&str>| values.into_iter().map(|s| s.to_string()).collect())]
+//!     tags: Vec<String>,
+//! }
+//! ```
+//!
+//! This generates a setter that accepts `Vec<&str>` and converts it to `Vec<String>`
+//! using the provided closure expression.
+
+use crate::validation::error_messages::ErrorMessages;
 
 /// Configuration derived from field-level builder attributes.
 ///
@@ -123,6 +145,30 @@ pub struct FieldAttributes {
     ///
     /// See the crate-level documentation for comprehensive usage examples.
     pub impl_into: Option<bool>,
+
+    /// Custom converter closure expression for parameter transformation.
+    ///
+    /// When specified, the setter method will use this closure to transform
+    /// the input parameter before assigning to the field. The closure must:
+    /// - Have explicit parameter types (e.g., `|value: Vec<&str>| ...`)
+    /// - Return a value that matches the field's type exactly
+    /// - Be valid Rust syntax that compiles in the generated code
+    ///
+    /// # Interaction with other attributes
+    ///
+    /// This attribute is mutually exclusive with `impl_into` and `skip_setter`.
+    /// It is compatible with `required`, `setter_name`, `setter_prefix`, and `default`.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// #[derive(TypeStateBuilder)]
+    /// struct MyStruct {
+    ///     #[builder(converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
+    ///     tags: Vec<String>,
+    /// }
+    /// ```
+    pub converter: Option<syn::Expr>,
 }
 
 impl Default for FieldAttributes {
@@ -135,6 +181,7 @@ impl Default for FieldAttributes {
             default_value: None,
             skip_setter: false,
             impl_into: None,
+            converter: None,
         }
     }
 }
@@ -156,6 +203,9 @@ impl FieldAttributes {
     /// - Setter prefixes are not empty
     /// - Setter prefixes are valid identifier beginnings
     /// - Setter names are valid identifiers when provided
+    /// - Setter function and skip_setter are mutually exclusive
+    /// - Setter function and impl_into are mutually exclusive
+    /// - No duplicate setter functions
     ///
     /// # Errors
     ///
@@ -164,20 +214,47 @@ impl FieldAttributes {
     /// - Empty setter prefixes
     /// - Invalid setter prefix format
     /// - Invalid setter names
+    /// - setter function combined with skip_setter
+    /// - setter function combined with impl_into
+    /// - duplicate setter attributes
     pub fn validate(&self) -> syn::Result<()> {
         // Validate that setter_prefix and skip_setter are mutually exclusive
         if self.setter_prefix.is_some() && self.skip_setter {
-            return Err(syn::Error::new(
+            return Err(ErrorMessages::structured_error_span(
                 proc_macro2::Span::call_site(),
-                "Field-level setter_prefix is incompatible with skip_setter. Remove one of these attributes.",
+                "Field-level setter_prefix is incompatible with skip_setter",
+                Some("#[builder(setter_prefix)] and #[builder(skip_setter)] are incompatible"),
+                Some("remove one of these attributes"),
             ));
         }
 
         // Validate that impl_into and skip_setter are mutually exclusive
         if self.impl_into.is_some() && self.skip_setter {
-            return Err(syn::Error::new(
+            return Err(ErrorMessages::structured_error_span(
                 proc_macro2::Span::call_site(),
-                "Field-level impl_into is incompatible with skip_setter. Remove one of these attributes.",
+                "Field-level impl_into is incompatible with skip_setter",
+                Some("#[builder(impl_into)] and #[builder(skip_setter)] are incompatible"),
+                Some("remove one of these attributes"),
+            ));
+        }
+
+        // Validate that converter and skip_setter are mutually exclusive
+        if self.converter.is_some() && self.skip_setter {
+            return Err(ErrorMessages::structured_error_span(
+                proc_macro2::Span::call_site(),
+                "Field-level converter is incompatible with skip_setter",
+                Some("#[builder(converter)] and #[builder(skip_setter)] are incompatible"),
+                Some("remove one of these attributes"),
+            ));
+        }
+
+        // Validate that converter and impl_into are mutually exclusive
+        if self.converter.is_some() && self.impl_into.is_some() {
+            return Err(ErrorMessages::structured_error_span(
+                proc_macro2::Span::call_site(),
+                "Field-level converter is incompatible with impl_into",
+                Some("#[builder(converter)] and #[builder(impl_into)] are incompatible"),
+                Some("use either custom converter or impl_into, not both"),
             ));
         }
 
@@ -376,10 +453,22 @@ pub fn parse_field_attributes(attrs: &[syn::Attribute]) -> syn::Result<FieldAttr
                         field_attributes.impl_into = Some(true);
                     }
                     Ok(())
+                } else if meta.path.is_ident("converter") {
+                    // #[builder(converter = |value: Type| expression)]
+                    let value = meta.value()?;
+                    let expr: syn::Expr = value.parse()?;
+
+                    // Check for duplicate converter attributes
+                    if field_attributes.converter.is_some() {
+                        return Err(meta.error("Duplicate converter attribute. Only one converter is allowed per field"));
+                    }
+
+                    field_attributes.converter = Some(expr);
+                    Ok(())
                 } else {
                     // Unknown attribute
                     Err(meta.error(
-                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into"
+                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into, converter"
                     ))
                 }
             })?;
@@ -652,6 +741,7 @@ mod tests {
             default_value: None,
             skip_setter: false,
             impl_into: None,
+            converter: None,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -663,6 +753,7 @@ mod tests {
             default_value: Some("42".to_string()),
             skip_setter: true,
             impl_into: None,
+            converter: None,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -982,5 +1073,353 @@ mod tests {
         assert!(default_attrs.default_value.is_none());
         assert!(!default_attrs.skip_setter);
         assert!(default_attrs.impl_into.is_none());
+        assert!(default_attrs.converter.is_none());
+    }
+
+    // Comprehensive tests for setter function functionality
+
+    #[test]
+    fn test_parse_converter_simple() {
+        let attrs =
+            vec![parse_quote!(#[builder(converter = |value: String| value.to_uppercase())])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(!field_attrs.required);
+        assert!(field_attrs.setter_name.is_none());
+        assert!(field_attrs.setter_prefix.is_none());
+        assert!(field_attrs.default_value.is_none());
+        assert!(!field_attrs.skip_setter);
+        assert!(field_attrs.impl_into.is_none());
+
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_basic_closure() {
+        let attrs =
+            vec![parse_quote!(#[builder(converter = |value: String| value.to_uppercase())])];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_complex_closure() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |values: Vec<String>| values.into_iter().collect())]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_with_other_attributes() {
+        let attrs = vec![
+            parse_quote!(#[builder(required, converter = |value: String| value, setter_name = "custom")]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.required);
+        assert_eq!(field_attrs.setter_name, Some("custom".to_string()));
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_with_setter_prefix() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |value: String| value, setter_prefix = "with_")]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert_eq!(field_attrs.setter_prefix, Some("with_".to_string()));
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_with_default() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |value: String| value, default = "Vec::new()")]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert_eq!(field_attrs.default_value, Some("Vec::new()".to_string()));
+        assert!(field_attrs.converter.is_some());
+    }
+
+    #[test]
+    fn test_parse_converter_across_multiple_attributes() {
+        let attrs = vec![
+            parse_quote!(#[builder(required)]),
+            parse_quote!(#[builder(converter = |value: String| value)]),
+            parse_quote!(#[builder(setter_name = "custom")]),
+        ];
+        let field_attrs = parse_field_attributes(&attrs).unwrap();
+
+        assert!(field_attrs.required);
+        assert_eq!(field_attrs.setter_name, Some("custom".to_string()));
+        assert!(field_attrs.converter.is_some());
+    }
+
+    // Duplicate converter tests
+
+    #[test]
+    fn test_parse_duplicate_converter_same_attribute() {
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, converter = |y: i32| y)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate converter attribute"));
+    }
+
+    #[test]
+    fn test_parse_duplicate_converter_different_attributes() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |x: i32| x)]),
+            parse_quote!(#[builder(converter = |y: i32| y)]),
+        ];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate converter attribute"));
+    }
+
+    #[test]
+    fn test_parse_duplicate_converter_mixed_with_valid() {
+        let attrs = vec![
+            parse_quote!(#[builder(required)]),
+            parse_quote!(#[builder(converter = |x: i32| x)]),
+            parse_quote!(#[builder(converter = |y: i32| y)]), // Duplicate
+            parse_quote!(#[builder(setter_name = "custom")]),
+        ];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Duplicate converter attribute"));
+    }
+
+    // Validation tests for incompatible combinations
+
+    #[test]
+    fn test_validate_converter_with_skip_setter_error() {
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, skip_setter)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with skip_setter"));
+    }
+
+    #[test]
+    fn test_validate_converter_with_impl_into_flag_error() {
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, impl_into)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with impl_into"));
+    }
+
+    #[test]
+    fn test_validate_converter_with_impl_into_true_error() {
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, impl_into = true)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with impl_into"));
+    }
+
+    #[test]
+    fn test_validate_converter_with_impl_into_false_error() {
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, impl_into = false)])];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with impl_into"));
+    }
+
+    #[test]
+    fn test_validate_converter_with_skip_setter_across_attributes() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |x: i32| x)]),
+            parse_quote!(#[builder(skip_setter)]),
+        ];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with skip_setter"));
+    }
+
+    #[test]
+    fn test_validate_converter_with_impl_into_across_attributes() {
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |x: i32| x)]),
+            parse_quote!(#[builder(impl_into)]),
+        ];
+        let result = parse_field_attributes(&attrs);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with impl_into"));
+    }
+
+    // Valid combinations tests
+
+    #[test]
+    fn test_validate_converter_with_valid_combinations() {
+        // converter with required
+        let attrs = vec![parse_quote!(#[builder(required, converter = |x: i32| x)])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // converter with setter_name
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, setter_name = "custom")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // converter with setter_prefix
+        let attrs = vec![parse_quote!(#[builder(converter = |x: i32| x, setter_prefix = "with_")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // converter with default
+        let attrs =
+            vec![parse_quote!(#[builder(converter = |x: Vec<i32>| x, default = "Vec::new()")])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // converter with multiple valid attributes
+        let attrs = vec![
+            parse_quote!(#[builder(required, converter = |x: i32| x, setter_name = "custom", setter_prefix = "with_", default = "42")]),
+        ];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok()); // Note: parsing should succeed, validation of required+default happens elsewhere
+    }
+
+    // Edge cases and complex path tests
+
+    #[test]
+    fn test_parse_converter_complex_closures() {
+        // Complex closure with multiple parameters
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |values: Vec<String>| values.into_iter().map(|s| s.to_uppercase()).collect())]),
+        ];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        let field_attrs = result.unwrap();
+        assert!(field_attrs.converter.is_some());
+
+        // Closure with method calls and chaining
+        let attrs =
+            vec![parse_quote!(#[builder(converter = |input: String| input.trim().to_string())])];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+
+        // Closure with complex logic
+        let attrs = vec![
+            parse_quote!(#[builder(converter = |data: Vec<i32>| data.into_iter().filter(|&x| x > 0).sum::<i32>())]),
+        ];
+        let result = parse_field_attributes(&attrs);
+        assert!(result.is_ok());
+    }
+
+    // Manual validation tests using FieldAttributes directly
+
+    #[test]
+    fn test_field_attributes_validate_setter_function_combinations() {
+        // Valid: setter function alone
+        let valid_attrs = FieldAttributes {
+            required: false,
+            setter_name: None,
+            setter_prefix: None,
+            default_value: None,
+            skip_setter: false,
+            impl_into: None,
+            converter: Some(syn::parse_str("|value: String| value").unwrap()),
+        };
+        assert!(valid_attrs.validate().is_ok());
+
+        // Valid: setter function with other compatible attributes
+        let valid_attrs = FieldAttributes {
+            required: true,
+            setter_name: Some("custom".to_string()),
+            setter_prefix: Some("with_".to_string()),
+            default_value: Some("Vec::new()".to_string()),
+            skip_setter: false,
+            impl_into: None,
+            converter: Some(syn::parse_str("|value: String| value").unwrap()),
+        };
+        assert!(valid_attrs.validate().is_ok());
+
+        // Invalid: converter with skip_setter
+        let invalid_attrs = FieldAttributes {
+            required: false,
+            setter_name: None,
+            setter_prefix: None,
+            default_value: None,
+            skip_setter: true,
+            impl_into: None,
+            converter: Some(syn::parse_str("|value: String| value").unwrap()),
+        };
+        let result = invalid_attrs.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with skip_setter"));
+
+        // Invalid: converter with impl_into
+        let invalid_attrs = FieldAttributes {
+            required: false,
+            setter_name: None,
+            setter_prefix: None,
+            default_value: None,
+            skip_setter: false,
+            impl_into: Some(true),
+            converter: Some(syn::parse_str("|value: String| value").unwrap()),
+        };
+        let result = invalid_attrs.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Field-level converter is incompatible with impl_into"));
+    }
+
+    #[test]
+    fn test_field_attributes_default_includes_setter_function() {
+        let default_attrs = FieldAttributes::default();
+        assert!(!default_attrs.required);
+        assert!(default_attrs.setter_name.is_none());
+        assert!(default_attrs.setter_prefix.is_none());
+        assert!(default_attrs.default_value.is_none());
+        assert!(!default_attrs.skip_setter);
+        assert!(default_attrs.impl_into.is_none());
+        assert!(default_attrs.converter.is_none());
     }
 }

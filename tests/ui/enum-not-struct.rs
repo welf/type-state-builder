@@ -7,7 +7,4 @@ enum NotAStruct {
     Variant2 { field: u32 },
 }
 
-fn main() {
-    let _instance = NotAStruct::builder()
-        .build();
-}
+fn main() {}

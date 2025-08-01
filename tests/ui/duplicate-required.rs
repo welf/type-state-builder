@@ -10,9 +10,4 @@ struct DuplicateRequired {
     email: String,
 }
 
-fn main() {
-    let _instance = DuplicateRequired::builder()
-        .name("test".to_string())
-        .email("test@example.com".to_string())
-        .build();
-}
+fn main() {}

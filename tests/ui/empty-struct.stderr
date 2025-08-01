@@ -1,24 +1,9 @@
-error: Struct 'EmptyStruct' has no fields.
-
-       Builder generation requires at least one field to be meaningful.
-
-       Add some fields to your struct:
-         struct EmptyStruct {
-           // Add fields here
-           field_name: FieldType,
-         }
+error: Struct 'EmptyStruct' has no fields
+       note: builder generation requires at least one field to be meaningful
+       help: add some fields to your struct
  --> tests/ui/empty-struct.rs:4:10
   |
 4 | #[derive(TypeStateBuilder)]
   |          ^^^^^^^^^^^^^^^^
   |
   = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0599]: no function or associated item named `builder` found for struct `EmptyStruct` in the current scope
- --> tests/ui/empty-struct.rs:9:34
-  |
-5 | struct EmptyStruct {
-  | ------------------ function or associated item `builder` not found for this struct
-...
-9 |     let _instance = EmptyStruct::builder()
-  |                                  ^^^^^^^ function or associated item not found in `EmptyStruct`

@@ -1,0 +1,9 @@
+error: Field-level converter is incompatible with impl_into
+       note: #[builder(converter)] and #[builder(impl_into)] are incompatible
+       help: use either custom converter or impl_into, not both
+ --> tests/ui/converter_with_impl_into.rs:3:10
+  |
+3 | #[derive(TypeStateBuilder)]
+  |          ^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)

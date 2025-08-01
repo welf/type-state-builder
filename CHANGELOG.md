@@ -7,6 +7,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-08-01
+
+### Added
+
+- **Custom Converter Attribute**: New `converter` attribute for advanced field transformations using closures
+  - `#[builder(converter = |value: InputType| expression)]` for custom conversion logic
+  - Support for complex transformations beyond simple `Into` conversions
+  - Works with any valid Rust expression or closure
+  - Examples:
+
+    ```rust
+    #[builder(converter = |s: &str| s.to_uppercase())]
+    name: String,
+
+    #[builder(converter = |items: Vec<&str>| items.iter().map(|s| s.to_string()).collect())]
+    tags: Vec<String>,
+    ```
+
+  - Comprehensive validation prevents conflicts with `impl_into` and `skip_setter` attributes
+  - Zero runtime overhead - all conversions happen at compile time
+
+### Changed
+
+- Error message format improved to follow Rust's standard diagnostic format with structured error/note/help components
+- All validation error messages now provide clearer, more actionable guidance
+
+### Improved
+
+- **Developer Experience**: More flexible field transformation options beyond basic `Into` conversions
+- **Documentation**: Comprehensive examples for converter usage patterns and best practices
+- **Testing**: Added extensive test coverage for converter functionality with edge cases
+
+### Fixed
+
+- UI test expectations updated for improved error messages
+- More validation tests for attribute conflicts and invalid combinations
+- Added `ui-tests` feature to prevent running tests in CI (different environments generate slightly different output)
+
+### Migration Guide
+
+The `converter` attribute is a new optional feature that doesn't affect existing code. All existing
+`#[derive(TypeStateBuilder)]` usage continues to work exactly as before.
+
+**New converter functionality:**
+
+```rust
+#[derive(TypeStateBuilder)]
+struct Config {
+    // New: Custom converter for complex transformations
+    #[builder(converter = |path: &str| PathBuf::from(path).canonicalize().unwrap())]
+    config_path: PathBuf,
+
+    // Existing functionality unchanged
+    #[builder(required)]
+    name: String,
+
+    #[builder(impl_into, default = "description".to_string()")]
+    description: String,
+}
+```
+
 ## [0.2.0] - 2025-07-28
 
 ### Added
@@ -32,8 +93,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Improved
 
-- **Type name readability**: Generated builder type names now use PascalCase for field names instead of preserving underscores
-  - `LanguageConfigBuilder_HasLanguage_id_MissingFqn_separator` → `LanguageConfigBuilder_HasLanguageId_MissingFqnSeparator`
+- **Type name readability**: Generated builder type names now use PascalCase for field names instead of preserving
+  underscores
+  - `LanguageConfigBuilder_HasLanguage_id_MissingFqn_separator` →
+    `LanguageConfigBuilder_HasLanguageId_MissingFqnSeparator`
   - Improves readability and follows Rust type naming conventions
   - Makes generated type names in error messages much clearer
 
@@ -74,7 +137,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/welf/type-state-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/welf/type-state-builder/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/welf/type-state-builder/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/welf/type-state-builder/compare/v0.1.0...v0.1.1

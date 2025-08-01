@@ -70,37 +70,6 @@ pub struct DefaultConfig {
     pub _requires_default_trait: bool,
 }
 
-/// Utility struct for processing field-related operations.
-///
-/// This struct provides methods for common field processing operations
-/// that are needed during builder generation. It encapsulates the logic
-/// for handling field attributes, generating documentation, and creating
-/// configuration objects.
-///
-/// # Design Philosophy
-///
-/// The `FieldProcessor` follows these principles:
-/// - **Centralized logic** - All field processing in one place
-/// - **Immutable operations** - Methods don't modify state
-/// - **Comprehensive error handling** - Proper error propagation
-/// - **Flexible configuration** - Support for various field configurations
-///
-#[derive(Debug, Clone)]
-pub struct FieldProcessor;
-
-impl FieldProcessor {
-    /// Creates a new `FieldProcessor` instance.
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for FieldProcessor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Resolves the effective `impl_into` setting for a field.
 ///
 /// This function determines whether a field's setter should use `impl Into<FieldType>`
@@ -126,6 +95,135 @@ impl Default for FieldProcessor {
 /// See the crate-level documentation for usage examples.
 pub fn resolve_effective_impl_into(field_impl_into: Option<bool>, struct_impl_into: bool) -> bool {
     field_impl_into.unwrap_or(struct_impl_into)
+}
+
+/// Configuration for setter parameter type and field assignment generation.
+///
+/// This struct contains the information needed to generate setter method
+/// parameters and field assignments, supporting both regular setters,
+/// impl_into setters, and custom setter functions.
+#[derive(Debug, Clone)]
+pub struct SetterParameterConfig {
+    /// The parameter type for the setter method
+    pub param_type: proc_macro2::TokenStream,
+    /// The expression to assign to the field (e.g., `value` or `custom_fn(value)`)
+    pub field_assignment_expr: proc_macro2::TokenStream,
+}
+
+/// Determines setter parameter configuration based on field attributes.
+///
+/// This function centralizes the logic for determining how to generate setter
+/// method parameters and field assignments. It handles three cases:
+/// 1. Custom setter function - calls the function with the parameter
+/// 2. impl_into enabled - uses `impl Into<FieldType>` parameter with `.into()`
+/// 3. Regular setter - uses direct field type parameter
+///
+/// # Arguments
+///
+/// * `field_type` - The type of the field being set
+/// * `converter` - Optional custom converter closure expression
+/// * `use_impl_into` - Whether to use `impl Into<T>` parameters
+///
+/// # Returns
+///
+/// A `SetterParameterConfig` containing the parameter type and assignment expression.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// // Custom setter function
+/// let config = resolve_setter_parameter_config(
+///     &parse_quote!(Vec<String>),
+///     Some(&parse_quote!(string_vec_from_strs)),
+///     false
+/// );
+/// // Results in: param_type = <inferred>, field_assignment_expr = string_vec_from_strs(value)
+///
+/// // impl_into enabled
+/// let config = resolve_setter_parameter_config(
+///     &parse_quote!(String),
+///     None,
+///     true
+/// );
+/// // Results in: param_type = impl Into<String>, field_assignment_expr = value.into()
+///
+/// // Regular setter
+/// let config = resolve_setter_parameter_config(
+///     &parse_quote!(String),
+///     None,
+///     false
+/// );
+/// // Results in: param_type = String, field_assignment_expr = value
+/// ```
+pub fn resolve_setter_parameter_config(
+    field_type: &syn::Type,
+    converter: Option<&syn::Expr>,
+    use_impl_into: bool,
+) -> SetterParameterConfig {
+    if let Some(converter_expr) = converter {
+        // Custom converter case - extract parameter type from closure
+        let param_type = extract_closure_parameter_type(converter_expr).unwrap_or_else(
+            || quote::quote! { /* Error: Unable to parse closure parameter type */ },
+        );
+
+        SetterParameterConfig {
+            param_type,
+            field_assignment_expr: quote::quote! { (#converter_expr)(value) },
+        }
+    } else if use_impl_into {
+        // impl_into case
+        SetterParameterConfig {
+            param_type: quote::quote! { impl Into<#field_type> },
+            field_assignment_expr: quote::quote! { value.into() },
+        }
+    } else {
+        // Regular setter case
+        SetterParameterConfig {
+            param_type: quote::quote! { #field_type },
+            field_assignment_expr: quote::quote! { value },
+        }
+    }
+}
+
+/// Extracts the parameter type from a closure expression.
+///
+/// This function parses a closure expression like `|value: Vec<&str>| ...`
+/// and extracts the parameter type `Vec<&str>`.
+///
+/// # Arguments
+///
+/// * `expr` - The closure expression to parse
+///
+/// # Returns
+///
+/// An `Option<proc_macro2::TokenStream>` containing the parameter type,
+/// or `None` if the expression is not a valid closure or the parameter type cannot be extracted.
+fn extract_closure_parameter_type(expr: &syn::Expr) -> Option<proc_macro2::TokenStream> {
+    match expr {
+        syn::Expr::Closure(closure) => {
+            // Get the first parameter (we expect exactly one parameter)
+            if let Some(first_param) = closure.inputs.first() {
+                match first_param {
+                    syn::Pat::Type(pat_type) => {
+                        // Extract the type from |value: Type| pattern
+                        let param_type = &pat_type.ty;
+                        Some(quote::quote! { #param_type })
+                    }
+                    _ => {
+                        // Parameter doesn't have an explicit type annotation
+                        None
+                    }
+                }
+            } else {
+                // No parameters in closure
+                None
+            }
+        }
+        _ => {
+            // Not a closure expression
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -166,6 +264,144 @@ mod tests {
             assert_eq!(
                 result, expected,
                 "Failed for field_impl_into={field_setting:?}, struct_impl_into={struct_setting}, expected={expected}"
+            );
+        }
+    }
+
+    // Tests for resolve_setter_parameter_config
+
+    #[test]
+    fn test_resolve_setter_parameter_config_converter_closure() {
+        let field_type: syn::Type = syn::parse_quote!(Vec<String>);
+        let converter: syn::Expr = syn::parse_quote!(|values: Vec<&str>| values
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect());
+
+        let config = resolve_setter_parameter_config(
+            &field_type,
+            Some(&converter),
+            false, // use_impl_into should be ignored when converter is provided
+        );
+
+        // Should use the extracted parameter type from the closure
+        assert_eq!(config.param_type.to_string(), "Vec < & str >");
+        // Should call the converter closure
+        assert_eq!(config.field_assignment_expr.to_string(), "(| values : Vec < & str > | values . into_iter () . map (| s | s . to_string ()) . collect ()) (value)");
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_converter_ignores_impl_into() {
+        let field_type: syn::Type = syn::parse_quote!(String);
+        let converter: syn::Expr = syn::parse_quote!(|input: &str| input.to_uppercase());
+
+        // Even with use_impl_into = true, should prioritize converter
+        let config = resolve_setter_parameter_config(&field_type, Some(&converter), true);
+
+        assert_eq!(config.param_type.to_string(), "& str");
+        assert_eq!(
+            config.field_assignment_expr.to_string(),
+            "(| input : & str | input . to_uppercase ()) (value)"
+        );
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_impl_into() {
+        let field_type: syn::Type = syn::parse_quote!(String);
+
+        let config = resolve_setter_parameter_config(&field_type, None, true);
+
+        assert_eq!(config.param_type.to_string(), "impl Into < String >");
+        assert_eq!(config.field_assignment_expr.to_string(), "value . into ()");
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_regular_setter() {
+        let field_type: syn::Type = syn::parse_quote!(i32);
+
+        let config = resolve_setter_parameter_config(&field_type, None, false);
+
+        assert_eq!(config.param_type.to_string(), "i32");
+        assert_eq!(config.field_assignment_expr.to_string(), "value");
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_complex_types() {
+        // Test with complex generic types
+        let field_type: syn::Type = syn::parse_quote!(HashMap<String, Vec<i32>>);
+
+        // impl_into case
+        let config = resolve_setter_parameter_config(&field_type, None, true);
+        assert_eq!(
+            config.param_type.to_string(),
+            "impl Into < HashMap < String , Vec < i32 > > >"
+        );
+
+        // Regular case
+        let config = resolve_setter_parameter_config(&field_type, None, false);
+        assert_eq!(
+            config.param_type.to_string(),
+            "HashMap < String , Vec < i32 > >"
+        );
+
+        // Converter case
+        let converter: syn::Expr =
+            syn::parse_quote!(|data: Vec<(String, Vec<i32>)>| data.into_iter().collect());
+        let config = resolve_setter_parameter_config(&field_type, Some(&converter), false);
+        assert_eq!(
+            config.param_type.to_string(),
+            "Vec < (String , Vec < i32 >) >"
+        );
+        assert_eq!(
+            config.field_assignment_expr.to_string(),
+            "(| data : Vec < (String , Vec < i32 >) > | data . into_iter () . collect ()) (value)"
+        );
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_complex_converters() {
+        let field_type: syn::Type = syn::parse_quote!(PathBuf);
+
+        // Converter with method chaining
+        let converter: syn::Expr =
+            syn::parse_quote!(|path_str: &str| PathBuf::from(path_str.trim()));
+        let config = resolve_setter_parameter_config(&field_type, Some(&converter), false);
+
+        assert_eq!(config.param_type.to_string(), "& str");
+        assert_eq!(
+            config.field_assignment_expr.to_string(),
+            "(| path_str : & str | PathBuf :: from (path_str . trim ())) (value)"
+        );
+
+        // Converter with more complex logic
+        let converter: syn::Expr = syn::parse_quote!(|items: Vec<String>| items
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("/")
+            .into());
+        let config = resolve_setter_parameter_config(&field_type, Some(&converter), false);
+
+        assert_eq!(config.param_type.to_string(), "Vec < String >");
+        assert_eq!(config.field_assignment_expr.to_string(), "(| items : Vec < String > | items . into_iter () . filter (| s | ! s . is_empty ()) . collect :: < Vec < _ > > () . join (\"/\") . into ()) (value)");
+    }
+
+    #[test]
+    fn test_resolve_setter_parameter_config_precedence() {
+        let field_type: syn::Type = syn::parse_quote!(String);
+        let converter: syn::Expr = syn::parse_quote!(|input: &str| input.to_string());
+
+        // Converter should always take precedence over impl_into
+        let configs = [
+            resolve_setter_parameter_config(&field_type, Some(&converter), true),
+            resolve_setter_parameter_config(&field_type, Some(&converter), false),
+        ];
+
+        for config in configs {
+            assert_eq!(config.param_type.to_string(), "& str");
+            assert_eq!(
+                config.field_assignment_expr.to_string(),
+                "(| input : & str | input . to_string ()) (value)"
             );
         }
     }

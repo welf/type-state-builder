@@ -10,9 +10,4 @@ struct DuplicateSetterPrefix {
     email: String,
 }
 
-fn main() {
-    let _instance = DuplicateSetterPrefix::builder()
-        .with_name("test".to_string())
-        .email("test@example.com".to_string())
-        .build();
-}
+fn main() {}

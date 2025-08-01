@@ -12,30 +12,30 @@
 //! - **Declared generics**: Parameters declared in the struct signature (e.g., `struct Foo<T, U>`)
 //! - **Used generics**: Generic parameters actually referenced in field types
 //!
-//! The builder must only include used generics in its PhantomData to avoid
+//! The builder must only include used generics in its `PhantomData` to avoid
 //! "parameter is never used" compiler errors.
 //!
-//! ## PhantomData Transformation
+//! ## `PhantomData` Transformation
 //!
-//! When creating PhantomData for builders, we need to transform field types:
-//! - Generic types (T, U) → keep as-is for proper variance
-//! - Reference types (&'a T) → transform based on whether T is generic
-//! - Concrete types (String, i32) → replace with () to avoid unnecessary constraints
+//! When creating `PhantomData` for builders, we need to transform field types:
+//! - Generic types (`T`, `U`) → keep as-is for proper variance
+//! - Reference types (`&'a T`) → transform based on whether T is generic
+//! - Concrete types (`String`, `i32`) → replace with () to avoid unnecessary constraints
 //!
 
 use quote::quote;
 use std::collections::BTreeSet;
 use syn::{GenericParam, Generics, Type};
 
-/// Determines if a type contains generics or lifetimes that require PhantomData tracking.
+/// Determines if a type contains generics or lifetimes that require `PhantomData` tracking.
 ///
 /// This function performs proper analysis of the type structure to determine
-/// if it contains generic parameters or lifetimes that would require PhantomData
+/// if it contains generic parameters or lifetimes that would require `PhantomData`
 /// tracking in the generated builder.
 ///
 /// # Purpose
 ///
-/// Used to determine whether a builder struct needs PhantomData fields to properly
+/// Used to determine whether a builder struct needs `PhantomData` fields to properly
 /// track generic parameters and lifetimes from the original struct.
 ///
 /// # Arguments
@@ -45,15 +45,16 @@ use syn::{GenericParam, Generics, Type};
 /// # Returns
 ///
 /// `true` if the type contains generics or lifetimes, `false` otherwise.
+///
 /// # Implementation Details
 ///
 /// The function recursively analyzes the type structure to detect:
-/// - Generic type parameters (T, U, etc.)
-/// - Lifetime parameters ('a, 'b, etc.)
+/// - Generic type parameters (`T`, `U`, etc.)
+/// - Lifetime parameters (`'a`, `'b`, etc.)
 /// - Const generic parameters
-/// - Complex types containing generics (Vec<T>, Option<U>, etc.)
+/// - Complex types containing generics (`Vec<T>`, `Option<U>`, etc.)
 ///
-/// This precise analysis ensures that PhantomData is only included when
+/// This precise analysis ensures that `PhantomData` is only included when
 /// actually needed, reducing generated code size while maintaining correctness.
 pub fn has_generics_or_lifetimes(ty: &Type) -> bool {
     match ty {

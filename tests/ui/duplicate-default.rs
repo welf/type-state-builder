@@ -10,8 +10,4 @@ struct DuplicateDefault {
     count: u32,
 }
 
-fn main() {
-    let _instance = DuplicateDefault::builder()
-        .name("test".to_string())
-        .build();
-}
+fn main() {}

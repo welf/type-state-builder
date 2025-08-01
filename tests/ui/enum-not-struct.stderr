@@ -6,12 +6,3 @@ error: TypeStateBuilder only supports structs, not enums
 7 | |     Variant2 { field: u32 },
 8 | | }
   | |_^
-
-error[E0599]: no variant or associated item named `builder` found for enum `NotAStruct` in the current scope
-  --> tests/ui/enum-not-struct.rs:11:33
-   |
-5  | enum NotAStruct {
-   | --------------- variant or associated item `builder` not found for this enum
-...
-11 |     let _instance = NotAStruct::builder()
-   |                                 ^^^^^^^ variant or associated item not found in `NotAStruct`

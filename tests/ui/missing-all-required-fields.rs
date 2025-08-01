@@ -12,8 +12,7 @@ struct Config {
 }
 
 fn main() {
-    // This should fail to compile because no required fields are set
-    let config = Config::builder()
-        .timeout(Some(5000))
-        .build(); // Error: missing required fields 'api_key' and 'endpoint'
+    // This should fail: trying to build without setting any required fields
+    let config = Config::builder().build(); // Error: missing required fields 'api_key' and 'endpoint'
 }
+

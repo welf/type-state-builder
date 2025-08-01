@@ -1,14 +1,5 @@
-error: Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into
+error: Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into, converter
  --> tests/ui/invalid-attribute-syntax.rs:6:15
   |
 6 |     #[builder(invalid_attribute)]
   |               ^^^^^^^^^^^^^^^^^
-
-error[E0599]: no function or associated item named `builder` found for struct `InvalidAttribute` in the current scope
-  --> tests/ui/invalid-attribute-syntax.rs:13:39
-   |
-4  | struct InvalidAttribute {
-   | ----------------------- function or associated item `builder` not found for this struct
-...
-13 |     let _instance = InvalidAttribute::builder()
-   |                                       ^^^^^^^ function or associated item not found in `InvalidAttribute`

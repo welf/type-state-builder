@@ -3,12 +3,3 @@ error: Duplicate skip_setter attribute. Only one skip_setter is allowed per fiel
   |
 9 |     #[builder(skip_setter)]
   |               ^^^^^^^^^^^
-
-error[E0599]: no function or associated item named `builder` found for struct `DuplicateSkipSetter` in the current scope
-  --> tests/ui/duplicate-skip-setter.rs:14:42
-   |
-4  | struct DuplicateSkipSetter {
-   | -------------------------- function or associated item `builder` not found for this struct
-...
-14 |     let _instance = DuplicateSkipSetter::builder()
-   |                                          ^^^^^^^ function or associated item not found in `DuplicateSkipSetter`

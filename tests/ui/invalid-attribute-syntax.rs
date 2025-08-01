@@ -5,13 +5,8 @@ struct InvalidAttribute {
     // This should be an error: invalid attribute syntax
     #[builder(invalid_attribute)]
     name: String,
-    
+
     email: String,
 }
 
-fn main() {
-    let _instance = InvalidAttribute::builder()
-        .name("test".to_string())
-        .email("test@example.com".to_string())
-        .build();
-}
+fn main() {}
