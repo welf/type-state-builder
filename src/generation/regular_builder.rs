@@ -616,8 +616,8 @@ mod tests {
         if let Ok(analysis) = analyze_struct(&input) {
             let result = generate_regular_builder(&analysis);
             // Should either succeed with minimal builder or fail gracefully
-            if result.is_ok() {
-                let code = result.unwrap().to_string();
+            if let Ok(tokens) = result {
+                let code = tokens.to_string();
                 assert!(code.contains("struct"));
             }
         }

@@ -29,7 +29,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 /// Strips the `r#` prefix from raw identifiers.
-pub fn strip_raw_identifier_prefix(ident_str: &str) -> Cow<str> {
+pub fn strip_raw_identifier_prefix(ident_str: &str) -> Cow<'_, str> {
     // Use strip_prefix for clean, efficient prefix removal
     // If the prefix isn't present, strip_prefix returns None and we use the original string
     if let Some(stripped) = ident_str.strip_prefix("r#") {
