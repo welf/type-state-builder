@@ -195,7 +195,7 @@ impl<'a> TokenGenerator<'a> {
                         "Create a builder, set required fields, then call {build_method_name}():"
                     ));
                     doc_lines.push(format!(
-                        "```rust\nlet instance = {}::builder()\n    // .required_field(value)\n    .{}();\n```",
+                        "```rust,ignore\nlet instance = {}::builder()\n    // .required_field(value)\n    .{}();\n```",
                         self.analysis.struct_name(),
                         build_method_name
                     ));
