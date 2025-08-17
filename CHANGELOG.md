@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-08-17
+
+### Fixed
+
+- Documentation example in generated `builder` method now uses `ignore` attribute to prevent doctest execution conflicts
+
 ## [0.3.0] - 2025-08-01
 
 ### Added
@@ -137,7 +143,8 @@ struct Config {
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/welf/type-state-builder/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/welf/type-state-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/welf/type-state-builder/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/welf/type-state-builder/compare/v0.1.1...v0.1.2
