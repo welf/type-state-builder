@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn test_generate_phantom_data_type() {
         let generics: Generics = parse_quote!(<T, U>);
-        let field_types = vec![parse_quote!(T), parse_quote!(String), parse_quote!(Vec<U>)];
+        let field_types = [parse_quote!(T), parse_quote!(String), parse_quote!(Vec<U>)];
 
         let result = generate_phantom_data_type(field_types.iter(), &generics);
         let result_str = result.to_string();
@@ -714,12 +714,12 @@ mod tests {
     fn test_needs_phantom_data() {
         // With generics - should need PhantomData
         let generics: Generics = parse_quote!(<T>);
-        let field_types = vec![parse_quote!(T)];
+        let field_types = [parse_quote!(T)];
         assert!(needs_phantom_data(&generics, field_types.iter()));
 
         // Without generics and concrete fields - should not need PhantomData
         let no_generics: Generics = parse_quote!();
-        let concrete_fields = vec![parse_quote!(String)];
+        let concrete_fields = [parse_quote!(String)];
         assert!(!needs_phantom_data(&no_generics, concrete_fields.iter())); // Now properly analyzed
 
         // No generics and no fields - should not need PhantomData
