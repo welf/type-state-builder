@@ -36,10 +36,10 @@ struct ValidConfig {
     #[builder(required)]
     name: String,
 
-    #[builder(default = "42")]
+    #[builder(default = 42)]
     count: i32,
 
-    #[builder(skip_setter, default = "String::new()")]
+    #[builder(skip_setter, default = String::new())]
     id: String,
 
     optional: Option<String>,

@@ -68,11 +68,6 @@ impl<'a> FieldValidator<'a> {
             self.validate_setter_name(setter_name, field)?;
         }
 
-        // Validate default value expression if provided
-        if let Some(default_value) = &field.attributes().default_value {
-            self.validate_default_expression(default_value, field)?;
-        }
-
         Ok(())
     }
 
@@ -183,38 +178,6 @@ impl<'a> FieldValidator<'a> {
 
         Ok(())
     }
-
-    /// Validates that a default value expression is syntactically correct.
-    ///
-    /// # Arguments
-    ///
-    /// * `default_value` - The default value expression to validate
-    /// * `field` - The field that uses this default value (for error context)
-    ///
-    /// # Returns
-    ///
-    /// A `syn::Result<()>` indicating success or containing validation errors.
-    fn validate_default_expression(
-        &self,
-        default_value: &str,
-        field: &FieldInfo,
-    ) -> syn::Result<()> {
-        // Try to parse the default value as an expression
-        syn::parse_str::<syn::Expr>(default_value).map_err(|parse_error| {
-            let field_name_str = field.name().to_string();
-            let clean_name = strip_raw_identifier_prefix(&field_name_str);
-            ErrorMessages::structured_error(
-                field.name(),
-                &format!(
-                    "Invalid default value expression for field '{clean_name}': '{default_value}'"
-                ),
-                Some(&format!("parse error: {parse_error}")),
-                Some("ensure the default value is a valid Rust expression"),
-            )
-        })?;
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -240,7 +203,7 @@ mod tests {
             "name",
             FieldAttributes {
                 required: true,
-                default_value: Some("test".to_string()),
+                default_value: Some(syn::parse_str("test").expect("test expr")),
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: false,
@@ -363,7 +326,7 @@ mod tests {
             "count",
             FieldAttributes {
                 required: false,
-                default_value: Some("42".to_string()),
+                default_value: Some(syn::parse_str("42").expect("test expr")),
                 setter_name: Some("custom_name".to_string()),
                 setter_prefix: None,
                 skip_setter: true,
@@ -389,7 +352,7 @@ mod tests {
             "count",
             FieldAttributes {
                 required: false,
-                default_value: Some("42".to_string()),
+                default_value: Some(syn::parse_str("42").expect("test expr")),
                 setter_name: None,
                 setter_prefix: Some("with_".to_string()),
                 skip_setter: true,
@@ -415,7 +378,7 @@ mod tests {
             "count",
             FieldAttributes {
                 required: false,
-                default_value: Some("42".to_string()),
+                default_value: Some(syn::parse_str("42").expect("test expr")),
                 setter_name: None,
                 setter_prefix: None,
                 skip_setter: true,

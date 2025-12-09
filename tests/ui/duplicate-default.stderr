@@ -1,5 +1,5 @@
 error: Duplicate default attribute. Only one default is allowed per field
  --> tests/ui/duplicate-default.rs:9:15
   |
-9 |     #[builder(default = "100")]
-  |               ^^^^^^^^^^^^^^^
+9 |     #[builder(default = 100)]
+  |               ^^^^^^^^^

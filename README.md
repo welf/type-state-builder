@@ -88,7 +88,7 @@ struct User {
 
     #[builder(
         converter = |age: u32| Some(age)),  // Custom conversion for setter age for ergonomic usage
-        default = "18"                      // If not set, defaults to 18
+        default = 18                        // If not set, defaults to 18
     )]
     age: Option<u32>,
 
@@ -182,13 +182,13 @@ struct DatabaseConfig {
     #[builder(required)]
     host: String,
 
-    #[builder(default = "5432")]
+    #[builder(default = 5432)]
     port: u16,
 
-    #[builder(default = "10")]
+    #[builder(default = 10)]
     max_connections: u32,
 
-    #[builder(default = "String::from(\"postgres\")")]
+    #[builder(default = String::from("postgres"))]
     database_name: String,
 }
 
@@ -216,10 +216,10 @@ struct Document {
     #[builder(required)]
     content: String,
 
-    #[builder(default = "Uuid::new_v4()", skip_setter)]
+    #[builder(default = Uuid::new_v4(), skip_setter)]
     id: Uuid,
 
-    #[builder(default = "chrono::Utc::now()", skip_setter)]
+    #[builder(default = chrono::Utc::now(), skip_setter)]
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -560,7 +560,7 @@ The closure syntax provides several benefits:
 
 #### Important Notes
 
-- **Default values** must be passed as string literals: `#[builder(default = "Vec::new()")]`
+- **Default values** use direct expressions: `#[builder(default = Vec::new())]`
 - **Converter expressions** use closure syntax: `#[builder(converter = |param: Type| expression)]`
 - `converter` is incompatible with `skip_setter` and `impl_into` (different approaches to setter generation)
 - The closure parameter type must be explicitly specified for proper code generation
@@ -716,7 +716,7 @@ struct MyStruct {
         required,                           // Mark field as required
         setter_name = "custom_name",        // Custom setter method name
         setter_prefix = "set_",             // Prefix for this setter (overrides struct-level)
-        default = "42",                     // Custom default value expression (string literal)
+        default = 42,                       // Custom default value expression
         skip_setter,                        // Don't generate a setter method
         impl_into,                          // Generate setter with impl Into<T> parameter
         impl_into = false,                  // Override struct-level impl_into for this field
@@ -739,17 +739,17 @@ struct Example {
     #[builder(required, setter_name = "set_name")]
     name: String,
 
-    #[builder(default = "42", setter_prefix = "with_")]
+    #[builder(default = 42, setter_prefix = "with_")]
     count: i32,
 
-    #[builder(default = "Uuid::new_v4()", skip_setter)]
+    #[builder(default = Uuid::new_v4(), skip_setter)]
     id: String,
 
     #[builder(converter = |value: &str| value.trim().to_string(), setter+prefix = "with_")]
     description: String,
 
     // ❌ Invalid combinations (compile errors)
-    // #[builder(required, default = "0")]          // Required fields can't have defaults (ambiguous)
+    // #[builder(required, default = 0)]          // Required fields can't have defaults (ambiguous)
     // #[builder(required, skip_setter)]            // Required fields need setters (ambiguous)
     // #[builder(setter_prefix = "with_", skip_setter)] // Can't prefix skipped setters (ambiguous)
     // #[builder(impl_into, skip_setter)]           // Can't use impl_into with skipped setters (ambiguous)
@@ -759,7 +759,7 @@ struct Example {
     // ❌ Duplicate attributes (compile errors)
     // #[builder(required, required)]               // Duplicate 'required' attribute
     // #[builder(setter_name = "name1", setter_name = "name2")] // Duplicate 'setter_name'
-    // #[builder(default = "1", default = "2")]     // Duplicate 'default' attribute
+    // #[builder(default = 1, default = 2)]     // Duplicate 'default' attribute
     // #[builder(converter = |x| x, converter = |y| y)] // Duplicate 'converter' attribute
 }
 ```
@@ -783,14 +783,14 @@ error: Duplicate setter_name attribute. Only one setter_name is allowed per fiel
 **Conflicting Logic:**
 
 ```rust,ignore
-#[builder(required, default = "empty")]  // ❌ Error!
+#[builder(required, default = "empty".to_string())]  // ❌ Error!
 name: String,
 ```
 
 **Error message:**
 
 ```text
-error: Required fields cannot have default values. Remove #[builder(default = "...")]
+error: Required fields cannot have default values. Remove #[builder(default = ...)]
        or make the field optional by removing #[builder(required)]
 ```
 
@@ -873,16 +873,16 @@ struct ApiConfig {
     #[builder(required)]
     api_key: String,
 
-    #[builder(default = "30")]
+    #[builder(default = 30)]
     timeout_seconds: u32,
 
-    #[builder(default = "3")]
+    #[builder(default = 3)]
     max_retries: u32,
 
-    #[builder(default = "false")]
+    #[builder(default = false)]
     debug_mode: bool,
 
-    #[builder(default = "String::from(\"application/json\")", setter_name = "content_type")]
+    #[builder(default = String::from("application/json"), setter_name = "content_type")]
     accept_header: String,
 }
 
@@ -912,19 +912,19 @@ struct DatabaseConnection {
     #[builder(required)]
     database: String,
 
-    #[builder(default = "5432")]
+    #[builder(default = 5432)]
     port: u16,
 
-    #[builder(default = "10")]
+    #[builder(default = 10)]
     max_connections: u32,
 
     username: Option<String>,
     password: Option<String>,
 
-    #[builder(default = "true")]
+    #[builder(default = true)]
     ssl_enabled: bool,
 
-    #[builder(default = "chrono::Utc::now()", skip_setter)]
+    #[builder(default = chrono::Utc::now(), skip_setter)]
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -956,10 +956,10 @@ where
     #[builder(required)]
     primary_data: HashMap<K, V>,
 
-    #[builder(default = "HashMap::new()")]
+    #[builder(default = HashMap::new())]
     metadata: HashMap<String, String>,
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     tags: Vec<String>,
 
     cached_count: Option<usize>,
@@ -995,21 +995,21 @@ struct AppConfig {
     #[builder(required)]
     version: String,
 
-    #[builder(default = "8080")]
+    #[builder(default = 8080)]
     port: u16,
 
-    #[builder(default = "String::from(\"localhost\")")]
+    #[builder(default = String::from("localhost"))]
     host: String,
 
     #[builder(impl_into = false, setter_name = "environment_vars")]
     env_vars: HashMap<String, String>,
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     features: Vec<String>,
 
     debug_mode: Option<bool>,
 
-    #[builder(default = "chrono::Utc::now()", skip_setter)]
+    #[builder(default = chrono::Utc::now(), skip_setter)]
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -1075,7 +1075,7 @@ struct MixedStruct {
     #[builder(required)] must_set: String,
     #[builder(required)] also_required: i32,
     optional_field: Option<String>,
-    #[builder(default = "42")] with_default: u32,
+    #[builder(default = 42)] with_default: u32,
 }
 ```
 

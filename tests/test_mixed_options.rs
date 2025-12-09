@@ -11,7 +11,7 @@ struct MixedOptions {
 
     email: Option<String>, // Optional: Option<String> → Option<Option<String>> in builder
 
-    #[builder(default = "42")]
+    #[builder(default = 42)]
     score: i32, // Optional: i32 with custom default
 }
 

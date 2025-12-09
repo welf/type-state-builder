@@ -40,7 +40,7 @@ struct Config {
     #[builder(converter = |hosts: &str| hosts.split(',').map(|h| h.trim().to_string()).collect())]
     allowed_hosts: Vec<String>,
 
-    #[builder(default = "8080")]
+    #[builder(default = 8080)]
     port: u16,
 }
 

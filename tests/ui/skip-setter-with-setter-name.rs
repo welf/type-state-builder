@@ -5,7 +5,7 @@ struct InvalidStruct {
     name: String,
 
     // This should be an error: can't have custom setter name on skipped setters
-    #[builder(default = "42", skip_setter, setter_name = "custom_name")]
+    #[builder(default = 42, skip_setter, setter_name = "custom_name")]
     count: u32,
 }
 

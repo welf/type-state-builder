@@ -7,6 +7,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: Default value syntax now uses direct expressions instead of string literals
+  - Old syntax: `#[builder(default = "42")]` or `#[builder(default = "Vec::new()")]`
+  - New syntax: `#[builder(default = 42)]` or `#[builder(default = Vec::new())]`
+  - This is more ergonomic and allows proper IDE support for default value expressions
+  - String literal defaults are now actual string values: `#[builder(default = "hello")]` sets the default to the string `"hello"`
+
+### Migration Guide
+
+To migrate from the old syntax:
+1. Remove the outer quotes from numeric literals: `default = "42"` → `default = 42`
+2. Remove the outer quotes from function calls: `default = "Vec::new()"` → `default = Vec::new()`
+3. For string defaults, remove the escaped inner quotes: `default = "\"hello\""` → `default = "hello"`
+
 ## [0.3.1] - 2025-08-17
 
 ### Fixed

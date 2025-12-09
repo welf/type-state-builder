@@ -82,7 +82,7 @@ mod field_level_attributes {
     // Test 5: Optional field with default
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct OptionalWithDefault {
-        #[builder(default = "\"default_value\".to_string()")]
+        #[builder(default = "default_value".to_string())]
         name: String,
     }
 
@@ -100,7 +100,7 @@ mod field_level_attributes {
     // Test 6: Optional with default and setter name
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct OptionalWithDefaultAndSetterName {
-        #[builder(default = "42", setter_name = "set_value")]
+        #[builder(default = 42, setter_name = "set_value")]
         count: i32,
     }
 
@@ -118,7 +118,7 @@ mod field_level_attributes {
     // Test 7: Optional with default, setter name, and prefix
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct OptionalWithDefaultSetterNameAndPrefix {
-        #[builder(default = "true", setter_name = "enabled", setter_prefix = "with_")]
+        #[builder(default = true, setter_name = "enabled", setter_prefix = "with_")]
         active: bool,
     }
 
@@ -137,7 +137,7 @@ mod field_level_attributes {
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct SkipSetterWithDefault {
         name: String,
-        #[builder(skip_setter, default = "\"auto_generated\".to_string()")]
+        #[builder(skip_setter, default = "auto_generated".to_string())]
         id: String,
     }
 
@@ -154,7 +154,7 @@ mod field_level_attributes {
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct SkipSetterWithoutDefault {
         name: String,
-        #[builder(skip_setter, default = "Default::default()")]
+        #[builder(skip_setter, default = Default::default())]
         count: i32, // Default::default() = 0
     }
 
@@ -207,7 +207,7 @@ mod field_level_attributes {
     // Test 12: impl_into with default
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct ImplIntoWithDefault {
-        #[builder(impl_into = true, default = "\"default\".to_string()")]
+        #[builder(impl_into = true, default = "default".to_string())]
         name: String,
     }
 
@@ -317,7 +317,7 @@ mod converter_combinations {
     // Test 19: Converter with default
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct ConverterWithDefault {
-        #[builder(converter = |value: Option<String>| value.unwrap_or_else(|| "fallback".to_string()), default = "\"default\".to_string()")]
+        #[builder(converter = |value: Option<String>| value.unwrap_or_else(|| "fallback".to_string()), default = "default".to_string())]
         name: String,
     }
 
@@ -510,9 +510,9 @@ mod struct_field_interactions {
         name: String,
         #[builder(impl_into = false, setter_prefix = "set_")]
         exact_value: String,
-        #[builder(default = "42")]
+        #[builder(default = 42)]
         count: i32,
-        #[builder(skip_setter, default = "\"auto\".to_string()")]
+        #[builder(skip_setter, default = "auto".to_string())]
         id: String,
     }
 
@@ -538,11 +538,11 @@ mod struct_field_interactions {
         required_basic: String,
         #[builder(required, setter_name = "set_id")]
         required_custom: i32,
-        #[builder(default = "\"optional\".to_string()")]
+        #[builder(default = "optional".to_string())]
         optional_default: String,
         #[builder(converter = |value: Vec<i32>| value.into_iter().sum())]
         optional_converter: i32,
-        #[builder(skip_setter, default = "true")]
+        #[builder(skip_setter, default = true)]
         skip_field: bool,
     }
 
@@ -564,9 +564,9 @@ mod struct_field_interactions {
     // Test 30: Edge case: Only optional fields with defaults and skip setters
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct OnlyOptionalFields {
-        #[builder(default = "\"default1\".to_string()")]
+        #[builder(default = "default1".to_string())]
         field1: String,
-        #[builder(skip_setter, default = "\"skip_default\".to_string()")]
+        #[builder(skip_setter, default = "skip_default".to_string())]
         field2: String,
         #[builder(converter = |value: Option<i32>| value.unwrap_or(0))]
         field3: i32,
@@ -606,7 +606,7 @@ mod generics_with_attributes {
         data: T,
         #[builder(converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
         tags: Vec<String>,
-        #[builder(default = "42")]
+        #[builder(default = 42)]
         count: i32,
     }
 
@@ -699,11 +699,11 @@ mod edge_cases_and_special_scenarios {
     // Test 35: Empty struct with only skip setter fields
     #[derive(TypeStateBuilder, Debug, PartialEq)]
     struct OnlySkipSetters {
-        #[builder(skip_setter, default = "\"auto1\".to_string()")]
+        #[builder(skip_setter, default = "auto1".to_string())]
         field1: String,
-        #[builder(skip_setter, default = "42")]
+        #[builder(skip_setter, default = 42)]
         field2: i32,
-        #[builder(skip_setter, default = "true")]
+        #[builder(skip_setter, default = true)]
         field3: bool,
     }
 
@@ -749,7 +749,7 @@ mod edge_cases_and_special_scenarios {
         age: i32,
 
         // Optional + default + converter + struct prefix inherited
-        #[builder(default = "vec![]", converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
+        #[builder(default = vec![], converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
         tags: Vec<String>,
 
         // Optional + impl_into override + field prefix
@@ -757,7 +757,7 @@ mod edge_cases_and_special_scenarios {
         path: String,
 
         // Skip setter + default
-        #[builder(skip_setter, default = "\"generated\".to_string()")]
+        #[builder(skip_setter, default = "generated".to_string())]
         id: String,
 
         // Plain optional with struct-level impl_into
@@ -842,7 +842,7 @@ mod edge_cases_and_special_scenarios {
         #[builder(converter = |value: Vec<f64>| value.into_iter().map(|u| format!("{u}")).collect())]
         formatted: Vec<String>,
 
-        #[builder(default = "std::collections::HashMap::new()")]
+        #[builder(default = std::collections::HashMap::new())]
         map: std::collections::HashMap<String, T>,
     }
 
@@ -875,7 +875,7 @@ mod edge_cases_and_special_scenarios {
         #[builder(impl_into = false)] // Explicit false
         field2: String,
 
-        #[builder(skip_setter, default = "\"default\".to_string()")]
+        #[builder(skip_setter, default = "default".to_string())]
         field3: String,
 
         // Implicit optional field (skip_setter = false is default)
@@ -914,13 +914,13 @@ mod documentation_examples {
         #[builder(converter = |age_str: &str| age_str.parse::<u32>().unwrap_or(0))]
         age: u32,
 
-        #[builder(default = "vec![]", converter = |interests: &[&str]| interests.iter().map(|s| s.to_string()).collect())]
+        #[builder(default = vec![], converter = |interests: &[&str]| interests.iter().map(|s| s.to_string()).collect())]
         interests: Vec<String>,
 
-        #[builder(skip_setter, default = "1234567890")]
+        #[builder(skip_setter, default = 1234567890)]
         created_at: u64,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         active: bool,
     }
 
@@ -958,13 +958,13 @@ mod documentation_examples {
         #[builder(converter = |env: &str| matches!(env.to_lowercase().as_str(), "true" | "1" | "yes" | "on"))]
         ssl_enabled: bool,
 
-        #[builder(converter = |paths: Vec<&str>| paths.into_iter().map(std::path::PathBuf::from).collect(), default = "vec![]")]
+        #[builder(converter = |paths: Vec<&str>| paths.into_iter().map(std::path::PathBuf::from).collect(), default = vec![])]
         cert_paths: Vec<std::path::PathBuf>,
 
-        #[builder(default = "1")]
+        #[builder(default = 1)]
         worker_threads: usize,
 
-        #[builder(skip_setter, default = "String::from(\"server-v1.0\")")]
+        #[builder(skip_setter, default = String::from("server-v1.0"))]
         version: String,
     }
 

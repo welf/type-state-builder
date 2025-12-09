@@ -36,7 +36,7 @@ fn test_custom_build_method_name_with_only_optional_fields() {
     struct Settings {
         timeout: Option<u64>,
         retries: Option<usize>,
-        #[builder(default = "true")]
+        #[builder(default = true)]
         enabled: bool,
     }
 
@@ -133,7 +133,7 @@ fn test_custom_build_method_with_skip_setter() {
         #[builder(required)]
         name: String,
 
-        #[builder(skip_setter, default = "\"auto_generated\".to_string()")]
+        #[builder(skip_setter, default = "auto_generated".to_string())]
         id: String,
 
         optional_field: Option<i32>,

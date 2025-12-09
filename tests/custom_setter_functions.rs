@@ -122,7 +122,7 @@ struct MixedCustomConverters {
     #[builder(converter = |value: i32| Some(value), setter_prefix = "set_")]
     value: Option<i32>,
 
-    #[builder(default = "String::from(\"default\")", converter = |text: &str| text.to_uppercase())]
+    #[builder(default = String::from("default"), converter = |text: &str| text.to_uppercase())]
     label: String,
 }
 

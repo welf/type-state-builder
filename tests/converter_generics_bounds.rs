@@ -224,7 +224,7 @@ where
             result[i] = value;
         }
         result
-    }, default = "[T::default(); N]")]
+    }, default = [T::default(); N])]
     filled_array: [T; N],
 
     #[builder(converter = |input: Vec<[T; N]>| {

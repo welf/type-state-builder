@@ -4,10 +4,10 @@ use type_state_builder::TypeStateBuilder;
 struct Config {
     name: Option<String>,
 
-    #[builder(default = "8080")]
+    #[builder(default = 8080)]
     port: u16,
 
-    #[builder(default = "false")]
+    #[builder(default = false)]
     debug: bool,
 }
 

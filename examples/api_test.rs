@@ -37,10 +37,10 @@ struct Config {
     #[builder(required)]
     host: String,
 
-    #[builder(default = "8080")]
+    #[builder(default = 8080)]
     port: u16,
 
-    #[builder(default = "String::from(\"auto-generated\")", skip_setter)]
+    #[builder(default = String::from("auto-generated"), skip_setter)]
     id: String,
 
     debug: bool,

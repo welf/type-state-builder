@@ -1,7 +1,5 @@
 error[E0425]: cannot find function `this_function_does_not_exist` in this scope
- --> tests/ui/invalid-default-expression.rs:3:10
+ --> tests/ui/invalid-default-expression.rs:8:25
   |
-3 | #[derive(TypeStateBuilder)]
-  |          ^^^^^^^^^^^^^^^^ not found in this scope
-  |
-  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)
+8 |     #[builder(default = this_function_does_not_exist())]
+  |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope

@@ -16,7 +16,7 @@ fn test_phantom_data_single_type() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<T>,
     }
 
@@ -34,7 +34,7 @@ fn test_phantom_data_single_lifetime() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<&'a str>,
     }
 
@@ -54,10 +54,10 @@ fn test_phantom_data_tuple_types() {
         #[builder(required)]
         real_data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_tuple: PhantomData<(T, U, V)>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_nested: PhantomData<((T, U), V)>,
 
         optional: Option<i32>,
@@ -79,7 +79,7 @@ fn test_phantom_data_tuple_lifetimes() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_lifetime_tuple: PhantomData<(&'a str, &'b str, &'c str)>,
 
         optional: Option<&'static str>,
@@ -103,13 +103,13 @@ fn test_phantom_data_function_types() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn: PhantomData<fn(T) -> U>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_multi: PhantomData<fn(T, U) -> V>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_ptr: PhantomData<*const fn(T) -> U>,
     }
 
@@ -127,13 +127,13 @@ fn test_phantom_data_closure_types() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn: PhantomData<Box<dyn Fn(T) -> U>>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_mut: PhantomData<Box<dyn FnMut(T) -> U>>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_once: PhantomData<Box<dyn FnOnce(T) -> U>>,
     }
 
@@ -153,16 +153,16 @@ fn test_phantom_data_complex_nested() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_vec: PhantomData<Vec<T>>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_map: PhantomData<HashMap<T, U>>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_nested: PhantomData<Vec<HashMap<T, Option<U>>>>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_result: PhantomData<Result<T, V>>,
     }
 
@@ -186,13 +186,13 @@ fn test_phantom_data_lifetime_bounds() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_bounded: PhantomData<&'a T>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_lifetime: PhantomData<fn(&'a T) -> &'b str>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex: PhantomData<for<'c> fn(&'c T) -> &'c str>,
     }
 
@@ -219,13 +219,13 @@ fn test_phantom_data_trait_bounds() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_debug: PhantomData<T>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_send: PhantomData<U>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_bound: PhantomData<fn(T) -> U>,
     }
 
@@ -245,10 +245,10 @@ fn test_phantom_data_const_generics() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_array: PhantomData<[T; N]>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_array: PhantomData<fn([T; N]) -> String>,
 
         actual_array: Option<[i32; N]>,
@@ -272,25 +272,25 @@ fn test_multiple_phantom_data_fields() {
         #[builder(required)]
         real_data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom1: PhantomData<T>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom2: PhantomData<U>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom3: PhantomData<V>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_lifetime1: PhantomData<&'a str>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_lifetime2: PhantomData<&'b str>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_const: PhantomData<[T; N]>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex: PhantomData<fn(&'a T, &'b U) -> [V; N]>,
 
         optional: Option<i32>,
@@ -315,7 +315,7 @@ fn test_phantom_data_with_required_must_skip_setter() {
         real_field: String,
 
         // PhantomData should always use skip_setter, even if logically "required"
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_field: PhantomData<T>,
     }
 
@@ -339,10 +339,10 @@ fn test_phantom_data_with_custom_build_method() {
         #[builder(required, setter_name = "set_data")]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex: ComplexPhantomType<'a, T, U>,
 
-        #[builder(default = "\"auto\".to_string()")]
+        #[builder(default = "auto".to_string())]
         auto_field: String,
     }
 
@@ -363,10 +363,10 @@ fn test_phantom_data_higher_ranked_trait_bounds() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_hrtb: PhantomData<for<'a> fn(&'a T) -> &'a str>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex_hrtb: PhantomData<for<'a, 'b> fn(&'a T, &'b str) -> &'a str>,
     }
 
@@ -383,19 +383,19 @@ fn test_phantom_data_higher_ranked_trait_bounds() {
 fn test_struct_with_only_phantom_data_and_defaults() {
     #[derive(TypeStateBuilder)]
     struct OnlyPhantomAndDefaults<T, U, V> {
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom1: PhantomData<T>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom2: PhantomData<U>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom3: PhantomData<V>,
 
-        #[builder(default = "\"default\".to_string()")]
+        #[builder(default = "default".to_string())]
         auto_string: String,
 
-        #[builder(default = "42")]
+        #[builder(default = 42)]
         auto_number: i32,
     }
 

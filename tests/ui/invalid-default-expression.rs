@@ -5,7 +5,7 @@ struct InvalidDefault {
     name: String,
 
     // This should be an error: invalid default expression
-    #[builder(default = "this_function_does_not_exist()")]
+    #[builder(default = this_function_does_not_exist())]
     count: u32,
 }
 

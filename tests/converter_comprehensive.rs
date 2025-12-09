@@ -201,7 +201,7 @@ struct ConverterWithAttributes {
     #[builder(converter = |value: Vec<i32>| value.into_iter().max().unwrap_or(0), setter_prefix = "set_")]
     max_value: i32,
 
-    #[builder(converter = |value: Option<String>| value.unwrap_or_else(|| "default".to_string()), default = "String::new()")]
+    #[builder(converter = |value: Option<String>| value.unwrap_or_else(|| "default".to_string()), default = String::new())]
     description: String,
 }
 

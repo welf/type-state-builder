@@ -139,7 +139,7 @@ fn test_associated_types_and_complex_bounds() {
 
         expected_output: Option<T::Output>,
         cache: Option<T::Output>,
-        #[builder(skip_setter, default = "Some(42)")]
+        #[builder(skip_setter, default = Some(42))]
         sense_of_life: Option<u8>,
     }
 
@@ -163,7 +163,7 @@ fn test_phantom_data_single_lifetime() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<&'a str>,
 
         optional: Option<i32>,
@@ -188,10 +188,10 @@ fn test_phantom_data_multiple_lifetimes() {
         #[builder(required)]
         name: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom1: PhantomData<(&'a str, &'b str)>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom2: PhantomData<&'c str>,
 
         data: Option<String>,
@@ -218,10 +218,10 @@ fn test_phantom_data_multiple_generics() {
         #[builder(required)]
         actual_data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_tuple: PhantomData<(T, U, V)>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn: PhantomData<fn(T, U) -> V>,
 
         optional: Option<i32>,
@@ -248,10 +248,10 @@ fn test_phantom_data_mixed_lifetimes_and_generics() {
         #[builder(required)]
         real_data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex: PhantomData<(&'a T, &'b U)>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_fn_with_lifetimes: PhantomData<for<'c> fn(&'c T, &'c U) -> &'c str>,
 
         optional_ref: Option<&'static str>,
@@ -282,7 +282,7 @@ fn test_function_pointers_with_lifetimes() {
         data: &'a T,
 
         transformer: Option<fn(&T) -> &T>,
-        #[builder(default = "None")]
+        #[builder(default = None)]
         complex_fn: Option<for<'b> fn(&'b T, &'b str) -> String>,
     }
 
@@ -320,7 +320,7 @@ fn test_closure_types_with_complex_bounds() {
         mutator: G,
 
         data: Option<T>,
-        #[builder(default = "None")]
+        #[builder(default = None)]
         optional_once: Option<Box<dyn FnOnce(T) -> String>>,
     }
 
@@ -372,10 +372,10 @@ fn test_maximum_complexity_all_features_combined() {
         #[builder(required)]
         array_data: [T; N],
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom_complex: PhantomData<(&'a T, &'b U, fn(V) -> String)>,
 
-        #[builder(default = "HashMap::new()")]
+        #[builder(default = HashMap::new())]
         storage: HashMap<U, T::Associated>,
 
         #[builder(setter_name = "set_convertible")]
@@ -383,10 +383,10 @@ fn test_maximum_complexity_all_features_combined() {
 
         nested_complex: Option<BTreeMap<String, Vec<&'b T>>>,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         function_ptr: Option<fn(&'a T, &'b str) -> T::Associated>,
 
-        #[builder(skip_setter, default = "vec![]")]
+        #[builder(skip_setter, default = vec![])]
         auto_generated: Vec<String>,
     }
 
@@ -424,7 +424,7 @@ fn test_deeply_nested_generic_types() {
         #[builder(required)]
         complex_optional: Option<Result<HashMap<K, V>, Box<dyn std::error::Error>>>,
 
-        #[builder(default = "BTreeMap::new()")]
+        #[builder(default = BTreeMap::new())]
         tree_map: BTreeMap<String, Vec<HashMap<K, Option<T>>>>,
 
         callback: Option<Box<dyn Fn(Result<V, T>) -> Option<K>>>,
@@ -480,13 +480,13 @@ fn test_database_connection_like_scenario() {
         #[builder(required)]
         error_handler: G,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<D>,
 
-        #[builder(default = "30")]
+        #[builder(default = 30)]
         timeout_seconds: u32,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         pool_size: Option<usize>,
 
         retry_attempts: Option<u32>,
@@ -533,13 +533,13 @@ fn test_async_context_like_scenario() {
         #[builder(required)]
         formatter: F,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         lifetime_phantom: PhantomData<&'a T>,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         timeout: Option<std::time::Duration>,
 
-        #[builder(default = "1")]
+        #[builder(default = 1)]
         max_concurrent: usize,
 
         error_callback: Option<Box<dyn Fn(String) -> () + Send + Sync>>,
@@ -579,10 +579,10 @@ fn test_multiple_const_generics_with_complex_types() {
         #[builder(required)]
         config_flag: bool,
 
-        #[builder(skip_setter, default = "FLAG")]
+        #[builder(skip_setter, default = FLAG)]
         const_flag: bool,
 
-        #[builder(default = "[None; N]")]
+        #[builder(default = [None; N])]
         buffer: [Option<T>; N],
 
         metadata: Option<String>,
@@ -615,13 +615,13 @@ fn test_all_attributes_combined() {
         #[builder(required, setter_name = "set_primary")]
         primary: T,
 
-        #[builder(setter_name = "set_secondary", default = "\"default\".to_string()")]
+        #[builder(setter_name = "set_secondary", default = "default".to_string())]
         secondary: String,
 
-        #[builder(skip_setter, default = "42")]
+        #[builder(skip_setter, default = 42)]
         auto_field: i32,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         optional_with_default: Option<String>,
 
         regular_optional: Option<bool>,
@@ -665,13 +665,13 @@ fn test_maximum_generic_parameters() {
         #[builder(required)]
         field_b: B,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<(&'b C, &'c D, E, F, G, H)>,
 
-        #[builder(default = "[0; N1]")]
+        #[builder(default = [0; N1])]
         array1: [i32; N1],
 
-        #[builder(default = "[false; N2]")]
+        #[builder(default = [false; N2])]
         array2: [bool; N2],
 
         optional_field: Option<String>,

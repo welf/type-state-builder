@@ -19,7 +19,7 @@ where
     #[builder(required)]
     name: String,
 
-    #[builder(skip_setter, default = "std::marker::PhantomData")]
+    #[builder(skip_setter, default = std::marker::PhantomData)]
     _phantom: std::marker::PhantomData<C>,
 }
 

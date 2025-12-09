@@ -116,7 +116,7 @@ fn test_nested_generic_types() {
         #[builder(required)]
         lookup: std::collections::HashMap<String, T>,
 
-        #[builder(default = "\"default_value\".to_string()")]
+        #[builder(default = "default_value".to_string())]
         optional: String,
     }
 
@@ -165,7 +165,7 @@ fn test_mixed_required_optional_generics() {
         #[builder(required)]
         required_string: String,
 
-        #[builder(default = "42.0")]
+        #[builder(default = 42.0)]
         optional_number: f64,
         optional_option: Option<i32>,
     }

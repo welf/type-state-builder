@@ -111,7 +111,7 @@ pub struct FieldAttributes {
     /// - Be available in the scope where the builder is used
     /// - Not reference `self` or other instance variables
     ///
-    pub default_value: Option<String>,
+    pub default_value: Option<syn::Expr>,
 
     /// Whether to skip generating a setter method for this field.
     ///
@@ -418,22 +418,16 @@ pub fn parse_field_attributes(attrs: &[syn::Attribute]) -> syn::Result<FieldAttr
                     field_attributes.setter_prefix = Some(setter_prefix);
                     Ok(())
                 } else if meta.path.is_ident("default") {
-                    // #[builder(default = "expression")]
+                    // #[builder(default = expression)]
                     let value = meta.value()?;
-                    let lit_str: syn::LitStr = value.parse()?;
-                    let default_value = lit_str.value();
-
-                    // Validate that the default value is not empty
-                    if default_value.is_empty() {
-                        return Err(meta.error("Default value cannot be empty"));
-                    }
 
                     // Check for duplicate default attributes
                     if field_attributes.default_value.is_some() {
                         return Err(meta.error("Duplicate default attribute. Only one default is allowed per field"));
                     }
 
-                    field_attributes.default_value = Some(default_value);
+                    let expr: syn::Expr = value.parse()?;
+                    field_attributes.default_value = Some(expr);
                     Ok(())
                 } else if meta.path.is_ident("impl_into") {
                     // #[builder(impl_into)] or #[builder(impl_into = true/false)]
@@ -519,15 +513,101 @@ mod tests {
         assert!(!field_attrs.skip_setter);
     }
 
-    #[test]
-    fn test_parse_default_attribute() {
-        let attrs = vec![parse_quote!(#[builder(default = "42")])];
-        let field_attrs = parse_field_attributes(&attrs).unwrap();
+    use proptest::prelude::*;
 
-        assert!(!field_attrs.required);
-        assert!(field_attrs.setter_name.is_none());
-        assert_eq!(field_attrs.default_value, Some("42".to_string()));
-        assert!(!field_attrs.skip_setter);
+    /// Strategy that generates valid Rust expressions for testing default value parsing
+    fn expr_strategy() -> impl Strategy<Value = &'static str> {
+        prop_oneof![
+            // Integer literals
+            Just("42"),
+            Just("0"),
+            Just("100_000"),
+            // Float literals
+            Just("3.14"),
+            Just("0.0"),
+            // Boolean literals
+            Just("true"),
+            Just("false"),
+            // String literals (as expressions, not the attribute syntax)
+            Just("\"hello\""),
+            Just("\"\""),
+            // Char literals
+            Just("'a'"),
+            // Function calls
+            Just("Vec::new()"),
+            Just("String::new()"),
+            Just("Default::default()"),
+            Just("std::collections::HashMap::new()"),
+            // Method chains
+            Just("Vec::with_capacity(10)"),
+            Just("String::from(\"test\")"),
+            // Struct instantiation
+            Just("None"),
+            Just("Some(42)"),
+            // Arithmetic expressions
+            Just("1 + 2"),
+            Just("10 * 5"),
+            // Array/tuple
+            Just("[1, 2, 3]"),
+            Just("(1, 2)"),
+            // Closures
+            Just("|| 42"),
+            Just("|x| x + 1"),
+        ]
+    }
+
+    /// Helper to parse an attribute from a struct definition
+    fn parse_attr_from_struct(attr_str: &str) -> syn::Attribute {
+        let struct_def = format!("struct Test {{ {} field: i32 }}", attr_str);
+        let input: syn::DeriveInput =
+            syn::parse_str(&struct_def).expect("struct definition should parse");
+        match input.data {
+            syn::Data::Struct(data) => match data.fields {
+                syn::Fields::Named(fields) => fields
+                    .named
+                    .into_iter()
+                    .next()
+                    .expect("struct should have a field")
+                    .attrs
+                    .into_iter()
+                    .next()
+                    .expect("field should have an attribute"),
+                _ => panic!("expected named fields"),
+            },
+            _ => panic!("expected struct"),
+        }
+    }
+
+    proptest! {
+        /// Property: Any valid Rust expression can be used as a default value
+        #[test]
+        fn prop_default_expression_parsing(expr_str in expr_strategy()) {
+            // Parse the expression directly to get expected result
+            let expected_expr: syn::Expr = syn::parse_str(expr_str)
+                .expect("test expression should be valid");
+
+            // Create attribute with direct expression syntax
+            let attr = parse_attr_from_struct(
+                &format!("#[builder(default = {})]", expr_str)
+            );
+
+            let result = parse_field_attributes(&[attr]);
+            prop_assert!(result.is_ok(), "Expression syntax should parse successfully for: {}", expr_str);
+
+            let attrs = result.unwrap();
+            prop_assert!(attrs.default_value.is_some(), "Should have default value");
+
+            // Compare token representations
+            let parsed_expr = attrs.default_value.unwrap();
+            let parsed_tokens = quote::quote!(#parsed_expr).to_string();
+            let expected_tokens = quote::quote!(#expected_expr).to_string();
+
+            prop_assert_eq!(
+                parsed_tokens,
+                expected_tokens,
+                "Expression should be preserved exactly"
+            );
+        }
     }
 
     #[test]
@@ -567,17 +647,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_complex_default_value() {
-        let attrs = vec![parse_quote!(#[builder(default = "std::collections::HashMap::new()")])];
-        let field_attrs = parse_field_attributes(&attrs).unwrap();
-
-        assert_eq!(
-            field_attrs.default_value,
-            Some("std::collections::HashMap::new()".to_string())
-        );
-    }
-
-    #[test]
     fn test_parse_no_builder_attributes() {
         let attrs = vec![parse_quote!(#[derive(Debug)])];
         let field_attrs = parse_field_attributes(&attrs).unwrap();
@@ -599,12 +668,14 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_empty_default_value_error() {
+    fn test_parse_empty_string_default_value() {
+        // Empty string is a valid default value (it's a string literal)
         let attrs = vec![parse_quote!(#[builder(default = "")])];
         let result = parse_field_attributes(&attrs);
 
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("cannot be empty"));
+        assert!(result.is_ok());
+        let field_attrs = result.unwrap();
+        assert!(field_attrs.default_value.is_some());
     }
 
     #[test]
@@ -750,7 +821,7 @@ mod tests {
             required: false,
             setter_name: None,
             setter_prefix: Some("with_".to_string()),
-            default_value: Some("42".to_string()),
+            default_value: Some(syn::parse_str("42").unwrap()),
             skip_setter: true,
             impl_into: None,
             converter: None,
@@ -859,7 +930,7 @@ mod tests {
         let field_attrs = result.unwrap();
         assert!(field_attrs.required);
         assert_eq!(field_attrs.setter_name, Some("custom".to_string()));
-        assert_eq!(field_attrs.default_value, Some("42".to_string()));
+        assert!(field_attrs.default_value.is_some());
     }
 
     #[test]
@@ -876,7 +947,7 @@ mod tests {
         let field_attrs = result.unwrap();
         assert!(field_attrs.required);
         assert_eq!(field_attrs.setter_name, Some("custom".to_string()));
-        assert_eq!(field_attrs.default_value, Some("42".to_string()));
+        assert!(field_attrs.default_value.is_some());
     }
 
     #[test]
@@ -893,7 +964,7 @@ mod tests {
         let field_attrs = result.unwrap();
         assert!(field_attrs.skip_setter);
         assert_eq!(field_attrs.setter_name, Some("custom".to_string()));
-        assert_eq!(field_attrs.default_value, Some("42".to_string()));
+        assert!(field_attrs.default_value.is_some());
         assert!(field_attrs.setter_prefix.is_none());
     }
 
@@ -911,7 +982,7 @@ mod tests {
         assert!(!field_attrs.required);
         assert_eq!(field_attrs.setter_name, Some("custom_name".to_string()));
         assert_eq!(field_attrs.setter_prefix, Some("with_".to_string()));
-        assert_eq!(field_attrs.default_value, Some("42".to_string()));
+        assert!(field_attrs.default_value.is_some());
         assert!(!field_attrs.skip_setter);
     }
 
@@ -1143,7 +1214,7 @@ mod tests {
         ];
         let field_attrs = parse_field_attributes(&attrs).unwrap();
 
-        assert_eq!(field_attrs.default_value, Some("Vec::new()".to_string()));
+        assert!(field_attrs.default_value.is_some());
         assert!(field_attrs.converter.is_some());
     }
 
@@ -1369,7 +1440,7 @@ mod tests {
             required: true,
             setter_name: Some("custom".to_string()),
             setter_prefix: Some("with_".to_string()),
-            default_value: Some("Vec::new()".to_string()),
+            default_value: Some(syn::parse_str("Vec::new()").unwrap()),
             skip_setter: false,
             impl_into: None,
             converter: Some(syn::parse_str("|value: String| value").unwrap()),

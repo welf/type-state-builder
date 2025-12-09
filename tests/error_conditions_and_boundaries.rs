@@ -38,13 +38,13 @@ fn test_struct_with_single_optional_field() {
 fn test_struct_with_only_skip_setter_fields() {
     #[derive(TypeStateBuilder)]
     struct OnlySkipSetter {
-        #[builder(skip_setter, default = "\"auto1\".to_string()")]
+        #[builder(skip_setter, default = "auto1".to_string())]
         field1: String,
 
-        #[builder(skip_setter, default = "42")]
+        #[builder(skip_setter, default = 42)]
         field2: i32,
 
-        #[builder(skip_setter, default = "true")]
+        #[builder(skip_setter, default = true)]
         field3: bool,
     }
 
@@ -66,7 +66,7 @@ fn test_struct_with_very_long_names() {
         #[builder(required, setter_name = "set_very_long_field_name_that_tests_naming")]
         very_long_field_name_that_should_work_fine: String,
 
-        #[builder(default = "\"very_long_default_value_for_testing_purposes\".to_string()")]
+        #[builder(default = "very_long_default_value_for_testing_purposes".to_string())]
         another_very_long_optional_field_name: String,
     }
 
@@ -117,13 +117,13 @@ fn test_numeric_boundary_values() {
         #[builder(required)]
         min_i64: i64,
 
-        #[builder(default = "0")]
+        #[builder(default = 0)]
         zero_value: i32,
 
-        #[builder(default = "f64::INFINITY")]
+        #[builder(default = f64::INFINITY)]
         infinity: f64,
 
-        #[builder(default = "f64::NEG_INFINITY")]
+        #[builder(default = f64::NEG_INFINITY)]
         neg_infinity: f64,
     }
 
@@ -148,10 +148,10 @@ fn test_unicode_field_names_and_values() {
         #[builder(required)]
         名前: String, // Japanese for "name"
 
-        #[builder(default = "\"🚀\".to_string()")]
+        #[builder(default = "🚀".to_string())]
         emoji_field: String,
 
-        #[builder(default = "\"Здравствуй мир\".to_string()")]
+        #[builder(default = "Здравствуй мир".to_string())]
         cyrillic_field: String,
     }
 
@@ -171,22 +171,22 @@ fn test_complex_default_expressions() {
         #[builder(required)]
         name: String,
 
-        #[builder(default = "vec![1, 2, 3, 4, 5]")]
+        #[builder(default = vec![1, 2, 3, 4, 5])]
         numbers: Vec<i32>,
 
-        #[builder(default = "std::collections::HashMap::new()")]
+        #[builder(default = std::collections::HashMap::new())]
         map: std::collections::HashMap<String, i32>,
 
-        #[builder(default = "Some(42)")]
+        #[builder(default = Some(42))]
         option_with_value: Option<i32>,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         option_none: Option<String>,
 
-        #[builder(default = "Ok(\"success\".to_string())")]
+        #[builder(default = Ok("success".to_string()))]
         result_ok: Result<String, String>,
 
-        #[builder(default = "std::time::SystemTime::now()")]
+        #[builder(default = std::time::SystemTime::now())]
         timestamp: std::time::SystemTime,
     }
 
@@ -226,26 +226,26 @@ fn test_many_fields_struct() {
         field09: Option<i32>,
         field10: Option<i32>,
 
-        #[builder(default = "1")]
+        #[builder(default = 1)]
         auto01: i32,
-        #[builder(default = "2")]
+        #[builder(default = 2)]
         auto02: i32,
-        #[builder(default = "3")]
+        #[builder(default = 3)]
         auto03: i32,
-        #[builder(default = "4")]
+        #[builder(default = 4)]
         auto04: i32,
-        #[builder(default = "5")]
+        #[builder(default = 5)]
         auto05: i32,
 
-        #[builder(skip_setter, default = "\"skip1\".to_string()")]
+        #[builder(skip_setter, default = "skip1".to_string())]
         skip01: String,
-        #[builder(skip_setter, default = "\"skip2\".to_string()")]
+        #[builder(skip_setter, default = "skip2".to_string())]
         skip02: String,
-        #[builder(skip_setter, default = "\"skip3\".to_string()")]
+        #[builder(skip_setter, default = "skip3".to_string())]
         skip03: String,
-        #[builder(skip_setter, default = "\"skip4\".to_string()")]
+        #[builder(skip_setter, default = "skip4".to_string())]
         skip04: String,
-        #[builder(skip_setter, default = "\"skip5\".to_string()")]
+        #[builder(skip_setter, default = "skip5".to_string())]
         skip05: String,
     }
 
@@ -401,10 +401,10 @@ fn test_zero_sized_types() {
         #[builder(required)]
         data: String,
 
-        #[builder(default = "ZeroSized")]
+        #[builder(default = ZeroSized)]
         zero_sized: ZeroSized,
 
-        #[builder(default = "()")]
+        #[builder(default = ())]
         unit: (),
     }
 
@@ -425,10 +425,10 @@ fn test_raw_pointers() {
         #[builder(required)]
         data: String,
 
-        #[builder(default = "std::ptr::null()")]
+        #[builder(default = std::ptr::null())]
         raw_ptr: *const i32,
 
-        #[builder(default = "std::ptr::null_mut()")]
+        #[builder(default = std::ptr::null_mut())]
         raw_mut_ptr: *mut i32,
     }
 
@@ -527,13 +527,13 @@ fn test_const_evaluation_defaults() {
         #[builder(required)]
         name: String,
 
-        #[builder(default = "COMPUTED_VALUE")]
+        #[builder(default = COMPUTED_VALUE)]
         computed: i32,
 
-        #[builder(default = "[0; ARRAY_SIZE]")]
+        #[builder(default = [0; ARRAY_SIZE])]
         array: [i32; ARRAY_SIZE],
 
-        #[builder(default = "ARRAY_SIZE")]
+        #[builder(default = ARRAY_SIZE)]
         size: usize,
     }
 

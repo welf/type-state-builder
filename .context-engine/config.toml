@@ -1,0 +1,1271 @@
+# Context Engine Language Servers Configuration
+#
+# ============================================================================
+# CONFLICT RESOLUTION STRATEGY
+# ============================================================================
+#
+# When multiple languages claim the same file extension, conflicts are
+# resolved using this 4-step priority:
+#
+# 1. Extension/glob matching → Get ALL candidates (in config order)
+# 2. Single candidate → Use it (no conflict)
+# 3. Multiple candidates → Check project roots (nearest wins, bottom-up)
+# 4. Roots don't resolve → First candidate in config wins
+#
+# HOW TO RESOLVE CONFLICTS IN YOUR CONFIG:
+#
+# Option 1: Comment out languages you don't use
+#   [[language]]
+#   lsp-language-id = "coq"  # Uncomment if you work with Coq
+#   # file-extensions = ["v"]
+#
+# Option 2: Add 'roots' field for project-based detection
+#   [[language]]
+#   lsp-language-id = "htmldjango"
+#   file-extensions = ["html"]  # Conflicts with regular HTML
+#   roots = ["manage.py"]       # Resolves conflict for Django projects
+#
+# Option 3: Reorder config (earlier = higher priority)
+#   Move your commonly used languages to the top of this file
+#
+# ============================================================================
+# CURRENT CONFLICTS IN DEFAULT CONFIG (resolved via roots)
+# ============================================================================
+#
+# 1. .v extension: V language, Coq, Verilog
+#    - V: roots = ["v.mod"]
+#    - Coq: roots = ["_CoqProject", "coq-project.toml"]
+#    - Verilog: no roots (relies on config order)
+#
+# 2. .s/.S extension: Assembly, GAS
+#    - Both have no standard roots (rely on config order)
+#
+# 3. .scm extension: Scheme, Tree-sitter Query
+#    - Both have no standard roots (rely on config order)
+#
+# 4. .inc extension: PHP, Pascal, SourcePawn, Bitbake
+#    - PHP: roots = ["composer.json", "index.php"]
+#    - Pascal: no roots (relies on config order)
+#    - SourcePawn: no roots (relies on config order)
+#    - Bitbake: roots via glob patterns (conf/*.conf)
+#
+# 5. .fs extension: F#, Forth
+#    - F#: roots = ["sln", "fsproj"]
+#    - Forth: no roots (relies on config order)
+#
+# ============================================================================
+
+# Systems Programming Languages
+[[language]]
+lsp-language-id = "rust"
+file-extensions = ["rs"]
+roots = ["Cargo.toml", "Cargo.lock"]
+primary-language-server-command = "rust-analyzer"
+# Show full type information in inlay hints without truncating simple nested types
+initialization-options = { inlayHints = { maxLength = 250, typeHints = { enable = true } } }
+
+[[language]]
+lsp-language-id = "c"
+file-extensions = ["c"]
+primary-language-server-command = "clangd"
+
+[[language]]
+lsp-language-id = "cpp"
+file-extensions = [
+  "cc",
+  "hh",
+  "c++",
+  "cpp",
+  "hpp",
+  "h",
+  "ipp",
+  "tpp",
+  "cxx",
+  "hxx",
+  "ixx",
+  "txx",
+  "ino",
+  "C",
+  "H",
+  "cu",
+  "cuh",
+  "cppm",
+  "h++",
+  "ii",
+  "inl",
+]
+globs = [".hpp.in", ".h.in"]
+primary-language-server-command = "clangd"
+
+[[language]]
+lsp-language-id = "zig"
+file-extensions = ["zig", "zon"]
+roots = ["build.zig"]
+primary-language-server-command = "zls"
+
+[[language]]
+lsp-language-id = "go"
+file-extensions = ["go"]
+roots = ["go.work", "go.mod"]
+primary-language-server-command = "gopls"
+primary-language-server-args = []
+fallback-language-servers = [
+  { command = "golangci-lint-langserver", args = [] },
+]
+
+[[language]]
+lsp-language-id = "gomod"
+file-extensions = []
+globs = ["go.mod"]
+primary-language-server-command = "gopls"
+
+[[language]]
+lsp-language-id = "gowork"
+file-extensions = []
+globs = ["go.work"]
+primary-language-server-command = "gopls"
+
+[[language]]
+lsp-language-id = "gotmpl"
+file-extensions = ["gotmpl"]
+primary-language-server-command = "gopls"
+
+# Web Technologies
+[[language]]
+lsp-language-id = "javascript"
+file-extensions = ["js", "mjs", "cjs", "rules", "es6", "pac"]
+globs = [".node_repl_history", "jakefile"]
+roots = ["package.json", "jsconfig.json"]
+primary-language-server-command = "typescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "javascriptreact"
+file-extensions = ["jsx"]
+roots = ["package.json", "jsconfig.json"]
+primary-language-server-command = "typescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "typescript"
+file-extensions = ["ts", "mts", "cts"]
+roots = ["package.json", "tsconfig.json"]
+primary-language-server-command = "typescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "typescriptreact"
+file-extensions = ["tsx"]
+roots = ["package.json", "tsconfig.json"]
+primary-language-server-command = "typescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "typespec"
+file-extensions = ["tsp"]
+roots = ["tspconfig.yaml"]
+primary-language-server-command = "typespec"
+
+[[language]]
+lsp-language-id = "html"
+file-extensions = [
+  "html",
+  "htm",
+  "shtml",
+  "xhtml",
+  "xht",
+  "jsp",
+  "asp",
+  "aspx",
+  "jshtm",
+  "volt",
+  "rhtml",
+  "cshtml",
+]
+primary-language-server-command = "vscode-html-language-server"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "superhtml", args = ["lsp"] },
+]
+
+[[language]]
+lsp-language-id = "css"
+file-extensions = ["css"]
+primary-language-server-command = "vscode-css-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "scss"
+file-extensions = ["scss"]
+primary-language-server-command = "vscode-css-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "svelte"
+file-extensions = ["svelte"]
+primary-language-server-command = "svelteserver"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "vue"
+file-extensions = ["vue"]
+roots = ["package.json"]
+primary-language-server-command = "vuels"
+
+[[language]]
+lsp-language-id = "astro"
+file-extensions = ["astro"]
+primary-language-server-command = "astro-ls"
+primary-language-server-args = ["--stdio"]
+
+# Python
+[[language]]
+lsp-language-id = "python"
+file-extensions = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt"]
+roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
+globs = [
+  ".python_history",
+  ".pythonstartup",
+  ".pythonrc",
+  "*SConstruct",
+  "*SConscript",
+  "*sconstruct",
+]
+primary-language-server-command = "pyright-langserver"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "basedpyright-langserver", args = ["--stdio"] },
+  { command = "pylsp", args = [] },
+  { command = "jedi-language-server", args = [] },
+]
+
+# Data & Configuration Languages
+[[language]]
+lsp-language-id = "json"
+file-extensions = [
+  "json",
+  "arb",
+  "ipynb",
+  "geojson",
+  "gltf",
+  "webmanifest",
+  "jsonl",
+  "avsc",
+  "ldtk",
+  "ldtkl",
+]
+globs = [
+  "flake.lock",
+  ".babelrc",
+  ".bowerrc",
+  ".jscrc",
+  ".jslintrc",
+  ".vuerc",
+  "composer.lock",
+  ".watchmanconfig",
+  ".swift-format",
+  "sublime-build",
+  "sublime-color-scheme",
+  "sublime-commands",
+  "sublime-completions",
+  "sublime-keymap",
+  "sublime-macro",
+  "sublime-menu",
+  "sublime-mousemap",
+  "sublime-project",
+  "sublime-settings",
+  "sublime-theme",
+  "sublime-workspace",
+]
+primary-language-server-command = "vscode-json-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "jsonc"
+file-extensions = ["jsonc"]
+globs = ["{t,j}sconfig.json", "bun.lock"]
+primary-language-server-command = "vscode-json-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "yaml"
+file-extensions = ["yml", "yaml", "sublime-syntax"]
+globs = [
+  ".prettierrc",
+  ".clangd",
+  ".clang-format",
+  ".clang-tidy",
+  ".gem/credentials",
+  ".kube/config",
+]
+primary-language-server-command = "yaml-language-server"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "ansible-language-server", args = ["--stdio"] },
+]
+
+[[language]]
+lsp-language-id = "toml"
+file-extensions = ["toml"]
+globs = ["pdm.lock", "poetry.lock", "Cargo.lock", "uv.lock"]
+primary-language-server-command = "taplo"
+primary-language-server-args = ["lsp", "stdio"]
+fallback-language-servers = [
+  { command = "tombi", args = ["lsp"] },
+]
+
+[[language]]
+lsp-language-id = "xml"
+file-extensions = [
+  "xml",
+  "mobileconfig",
+  "plist",
+  "xib",
+  "storyboard",
+  "svg",
+  "xsd",
+  "gml",
+  "xaml",
+  "tml",
+]
+primary-language-server-command = "lemminx"
+
+# Shell & System Languages
+[[language]]
+lsp-language-id = "shellscript"
+file-extensions = [
+  "sh",
+  "bash",
+  "ash",
+  "dash",
+  "ksh",
+  "mksh",
+  "zsh",
+  "zshenv",
+  "zlogin",
+  "zlogout",
+  "zprofile",
+  "zshrc",
+  "eclass",
+  "ebuild",
+  "bazelrc",
+  "Renviron",
+  "zsh-theme",
+  "cshrc",
+  "tcshrc",
+  "bashrc_Apple_Terminal",
+  "zshrc_Apple_Terminal",
+]
+globs = [
+  "i3/config",
+  "sway/config",
+  "tmux.conf",
+  ".bash_history",
+  ".bash_login",
+  ".bash_logout",
+  ".bash_profile",
+  ".bashrc",
+  ".profile",
+  ".zshenv",
+  ".zlogin",
+  ".zlogout",
+  ".zprofile",
+  ".zshrc",
+  ".zimrc",
+  "APKBUILD",
+  ".bash_aliases",
+  ".Renviron",
+  ".xprofile",
+  ".xsession",
+  ".xsessionrc",
+  ".yashrc",
+  ".yash_profile",
+  ".hushlogin",
+]
+primary-language-server-command = "bash-language-server"
+primary-language-server-args = ["start"]
+
+[[language]]
+lsp-language-id = "nushell"
+file-extensions = ["nu"]
+primary-language-server-command = "nu-lsp"
+
+[[language]]
+lsp-language-id = "fish"
+file-extensions = ["fish"]
+primary-language-server-command = "fish-lsp"
+primary-language-server-args = ["start"]
+
+# Document & Markup Languages
+[[language]]
+lsp-language-id = "markdown"
+roots = [".marksman.toml"]
+file-extensions = [
+  "md",
+  "livemd",
+  "markdown",
+  "mdx",
+  "mkd",
+  "mkdn",
+  "mdwn",
+  "mdown",
+  "markdn",
+  "mdtxt",
+  "mdtext",
+  "workbook",
+]
+globs = ["PULLREQ_EDITMSG"]
+primary-language-server-command = "marksman"
+primary-language-server-args = ["server"]
+fallback-language-servers = [
+  { command = "markdown-oxide", args = [] },
+]
+
+[[language]]
+lsp-language-id = "latex"
+file-extensions = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
+primary-language-server-command = "texlab"
+
+[[language]]
+lsp-language-id = "bibtex"
+file-extensions = ["bib"]
+primary-language-server-command = "texlab"
+
+[[language]]
+lsp-language-id = "typst"
+file-extensions = ["typ"]
+primary-language-server-command = "tinymist"
+
+# JVM Languages
+[[language]]
+lsp-language-id = "java"
+file-extensions = ["java", "jav", "pde"]
+roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
+primary-language-server-command = "jdtls"
+
+[[language]]
+lsp-language-id = "kotlin"
+file-extensions = ["kt", "kts"]
+roots = ["settings.gradle", "settings.gradle.kts"]
+primary-language-server-command = "kotlin-language-server"
+
+[[language]]
+lsp-language-id = "scala"
+file-extensions = ["scala", "sbt", "sc"]
+roots = ["build.sbt", "build.sc", "build.gradle", "build.gradle.kts", "pom.xml", ".scala-build"]
+primary-language-server-command = "metals"
+
+[[language]]
+lsp-language-id = "clojure"
+file-extensions = ["clj", "cljs", "cljc", "cljd", "edn", "clj_kondo"]
+roots = ["project.clj", "build.boot", "deps.edn", "shadow-cljs.edn"]
+primary-language-server-command = "clojure-lsp"
+
+# .NET Languages
+[[language]]
+lsp-language-id = "csharp"
+file-extensions = ["cs", "csx", "cake"]
+roots = ["sln", "csproj"]
+primary-language-server-command = "omnisharp"
+primary-language-server-args = ["--languageserver"]
+
+[[language]]
+lsp-language-id = "fsharp"
+file-extensions = ["fs", "fsx", "fsi", "fsy"]
+roots = ["sln", "fsproj"]
+primary-language-server-command = "fsautocomplete"
+
+# Functional Languages
+[[language]]
+lsp-language-id = "haskell"
+file-extensions = ["hs", "hs-boot", "hsc"]
+roots = ["Setup.hs", "stack.yaml", "cabal.project"]
+primary-language-server-command = "haskell-language-server"
+primary-language-server-args = ["--lsp"]
+
+[[language]]
+lsp-language-id = "ocaml"
+file-extensions = ["ml", "mli"]
+primary-language-server-command = "ocamllsp"
+
+[[language]]
+lsp-language-id = "purescript"
+file-extensions = ["purs"]
+roots = ["spago.yaml", "spago.dhall", "bower.json"]
+primary-language-server-command = "purescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "elm"
+file-extensions = ["elm"]
+roots = ["elm.json"]
+primary-language-server-command = "elm-language-server"
+
+[[language]]
+lsp-language-id = "erlang"
+file-extensions = ["erl", "hrl", "es", "escript"]
+roots = ["rebar.config"]
+primary-language-server-command = "erlang_ls"
+
+[[language]]
+lsp-language-id = "elixir"
+file-extensions = ["ex", "exs"]
+globs = ["mix.lock"]
+roots = ["mix.exs", "mix.lock"]
+primary-language-server-command = "expert"
+primary-language-server-args = []
+fallback-language-servers = [
+  { command = "elixir-ls", args = [] },
+]
+
+[[language]]
+lsp-language-id = "gleam"
+file-extensions = ["gleam"]
+roots = ["gleam.toml"]
+primary-language-server-command = "gleam"
+primary-language-server-args = ["lsp"]
+
+# Scripting Languages
+[[language]]
+lsp-language-id = "ruby"
+roots = ["Gemfile"]
+file-extensions = [
+  "rb",
+  "rake",
+  "irb",
+  "gemspec",
+  "rabl",
+  "jbuilder",
+  "jb",
+  "podspec",
+  "rjs",
+  "rbi",
+  "rbs",
+]
+globs = [
+  "rakefile",
+  "gemfile",
+  "Rakefile",
+  "Gemfile",
+  "Podfile",
+  "Vagrantfile",
+  "Brewfile",
+  "Guardfile",
+  "Capfile",
+  "Cheffile",
+  "Hobofile",
+  "Appraisals",
+  "Rantfile",
+  "Berksfile",
+  "Berksfile.lock",
+  "Thorfile",
+  "Puppetfile",
+  "Fastfile",
+  "Appfile",
+  "Deliverfile",
+  "Matchfile",
+  "Scanfile",
+  "Snapfile",
+  "Gymfile",
+]
+primary-language-server-command = "ruby-lsp"
+fallback-language-servers = [
+  { command = "solargraph", args = ["stdio"] },
+]
+
+[[language]]
+lsp-language-id = "php"
+file-extensions = ["php", "inc", "php4", "php5", "phtml", "ctp"]
+roots = ["composer.json", "index.php"]
+primary-language-server-command = "intelephense"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "phpactor", args = ["language-server"] },
+]
+
+[[language]]
+lsp-language-id = "perl"
+file-extensions = ["pl", "pm", "t", "psgi"]
+primary-language-server-command = "perlnavigator"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "lua"
+file-extensions = ["lua", "rockspec"]
+roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
+primary-language-server-command = "lua-language-server"
+
+[[language]]
+lsp-language-id = "teal"
+file-extensions = ["tl"]
+roots = ["tlconfig.lua"]
+primary-language-server-command = "teal-language-server"
+
+[[language]]
+lsp-language-id = "luau"
+file-extensions = ["luau"]
+roots = ["aftman.toml", "default.project.json", "wally.toml", "rokit.toml", "selene.toml", ".darklua.json", "foreman.toml", ".luaurc"]
+primary-language-server-command = "luau-lsp"
+primary-language-server-args = ["lsp"]
+
+# Scientific & Data Languages
+[[language]]
+lsp-language-id = "julia"
+file-extensions = ["jl"]
+roots = ["Manifest.toml", "Project.toml"]
+primary-language-server-command = "julia"
+primary-language-server-args = [
+  "--startup-file=no",
+  "--history-file=no",
+  "--quiet",
+  "-e",
+  "using LanguageServer; runserver()",
+]
+
+[[language]]
+lsp-language-id = "r"
+file-extensions = ["r", "R"]
+globs = [".Rprofile", ".Rhistory"]
+primary-language-server-command = "R"
+primary-language-server-args = ["--no-echo", "-e", "languageserver::run()"]
+
+[[language]]
+lsp-language-id = "matlab"
+file-extensions = ["m"]
+primary-language-server-command = "matlab-language-server"
+
+# Specialized Languages
+[[language]]
+lsp-language-id = "protobuf"
+file-extensions = ["proto"]
+primary-language-server-command = "buf"
+primary-language-server-args = ["beta", "lsp", "--timeout", "0"]
+fallback-language-servers = [
+  { command = "pb", args = ["lsp"] },
+  { command = "protols", args = [] },
+]
+
+[[language]]
+lsp-language-id = "graphql"
+file-extensions = ["gql", "graphql", "graphqls"]
+primary-language-server-command = "graphql-language-service"
+primary-language-server-args = ["server", "-m", "stream"]
+
+[[language]]
+lsp-language-id = "dockerfile"
+file-extensions = ["dockerfile"]
+roots = ["Dockerfile", "Containerfile"]
+globs = [
+  "Dockerfile",
+  "Dockerfile.*",
+  "dockerfile",
+  "dockerfile.*",
+  "Containerfile",
+  "Containerfile.*",
+  "containerfile",
+  "containerfile.*",
+]
+primary-language-server-command = "docker-langserver"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "docker-compose"
+file-extensions = []
+roots = ["docker-compose.yaml", "docker-compose.yml", "compose.yaml", "compose.yml"]
+globs = [
+  "docker-compose.yaml",
+  "docker-compose.yml",
+  "compose.yaml",
+  "compose.yml",
+]
+primary-language-server-command = "docker-compose-langserver"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "yaml-language-server", args = ["--stdio"] },
+]
+
+[[language]]
+lsp-language-id = "terraform"
+file-extensions = ["tf", "tfvars"]
+primary-language-server-command = "terraform-ls"
+primary-language-server-args = ["serve"]
+
+[[language]]
+lsp-language-id = "hcl"
+file-extensions = ["hcl"]
+globs = [".terraformrc", "terraform.rc"]
+primary-language-server-command = "terraform-ls"
+primary-language-server-args = ["serve"]
+
+# Database Languages
+[[language]]
+lsp-language-id = "sql"
+file-extensions = ["sql", "dsql"]
+primary-language-server-command = "sqls"
+
+[[language]]
+lsp-language-id = "prisma"
+file-extensions = ["prisma"]
+roots = ["package.json"]
+primary-language-server-command = "prisma-language-server"
+primary-language-server-args = ["--stdio"]
+
+# Systems Configuration
+[[language]]
+lsp-language-id = "cmake"
+file-extensions = ["cmake"]
+globs = ["CMakeLists.txt"]
+primary-language-server-command = "neocmakelsp"
+primary-language-server-args = ["stdio"]
+fallback-language-servers = [
+  { command = "cmake-language-server", args = [] },
+]
+
+[[language]]
+lsp-language-id = "make"
+file-extensions = ["make", "mk", "mak"]
+globs = ["Makefile", "makefile", "GNUmakefile", "OCamlMakefile"]
+primary-language-server-command = "make-language-server"
+
+[[language]]
+lsp-language-id = "nix"
+file-extensions = ["nix"]
+primary-language-server-command = "nil"
+fallback-language-servers = [
+  { command = "nixd", args = [] },
+]
+
+[[language]]
+lsp-language-id = "just"
+file-extensions = ["just", "justfile"]
+globs = ["justfile", "Justfile"]
+primary-language-server-command = "just-lsp"
+
+# Graphics & Game Development
+[[language]]
+lsp-language-id = "glsl"
+file-extensions = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp"]
+primary-language-server-command = "glsl_analyzer"
+
+[[language]]
+lsp-language-id = "wgsl"
+file-extensions = ["wgsl"]
+primary-language-server-command = "wgsl-analyzer"
+
+[[language]]
+lsp-language-id = "hlsl"
+file-extensions = ["hlsl", "hlsli"]
+primary-language-server-command = "hlsl-language-server"
+
+# Other Modern Languages
+[[language]]
+lsp-language-id = "dart"
+file-extensions = ["dart"]
+roots = ["pubspec.yaml"]
+primary-language-server-command = "dart"
+primary-language-server-args = ["language-server", "--client-id=helix"]
+
+[[language]]
+lsp-language-id = "swift"
+file-extensions = ["swift"]
+roots = ["Package.swift"]
+primary-language-server-command = "sourcekit-lsp"
+
+[[language]]
+lsp-language-id = "crystal"
+file-extensions = ["cr"]
+roots = ["shard.yml", "shard.lock"]
+primary-language-server-command = "crystalline"
+primary-language-server-args = ["--stdio"]
+fallback-language-servers = [
+  { command = "ameba-ls", args = [] },
+]
+
+[[language]]
+lsp-language-id = "nim"
+file-extensions = ["nim", "nims", "nimble"]
+primary-language-server-command = "nimlangserver"
+fallback-language-servers = [
+  { command = "nimlsp", args = [] },
+]
+
+[[language]]
+lsp-language-id = "v"
+file-extensions = ["v", "vv"]
+roots = ["v.mod"]
+primary-language-server-command = "v-analyzer"
+
+[[language]]
+lsp-language-id = "odin"
+file-extensions = ["odin"]
+roots = ["ols.json", "main.odin"]
+primary-language-server-command = "ols"
+
+# Niche/Specialized
+[[language]]
+lsp-language-id = "lean"
+file-extensions = ["lean"]
+roots = ["lakefile.lean"]
+primary-language-server-command = "lean"
+primary-language-server-args = ["--server"]
+
+[[language]]
+lsp-language-id = "coq"
+file-extensions = ["v"]
+roots = ["_CoqProject", "coq-project.toml"]
+primary-language-server-command = "coqtop"
+
+[[language]]
+lsp-language-id = "agda"
+file-extensions = ["agda"]
+primary-language-server-command = "agda-language-server"
+
+[[language]]
+lsp-language-id = "idris"
+file-extensions = ["idr", "lidr"]
+primary-language-server-command = "idris2-lsp"
+
+[[language]]
+lsp-language-id = "racket"
+file-extensions = ["rkt", "rktd", "rktl", "scrbl"]
+primary-language-server-command = "racket"
+primary-language-server-args = ["-l", "racket-langserver"]
+
+[[language]]
+lsp-language-id = "scheme"
+file-extensions = ["scm", "ss"]
+primary-language-server-command = "scheme-langserver"
+
+[[language]]
+lsp-language-id = "common-lisp"
+file-extensions = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "sexp"]
+primary-language-server-command = "cl-lsp"
+
+[[language]]
+lsp-language-id = "fennel"
+file-extensions = ["fnl", "fnlm"]
+primary-language-server-command = "fennel-ls"
+
+[[language]]
+lsp-language-id = "awk"
+file-extensions = ["awk", "gawk", "nawk", "mawk"]
+primary-language-server-command = "awk-language-server"
+
+# Emerging Languages
+[[language]]
+lsp-language-id = "mojo"
+file-extensions = ["mojo", "🔥"]
+roots = ["pixi.toml", "pixi.lock"]
+primary-language-server-command = "mojo-lsp-server"
+
+[[language]]
+lsp-language-id = "mint"
+file-extensions = ["mint"]
+primary-language-server-command = "mint"
+primary-language-server-args = ["tool", "ls"]
+
+[[language]]
+lsp-language-id = "koka"
+file-extensions = ["kk", "kki"]
+primary-language-server-command = "koka"
+primary-language-server-args = ["--language-server", "--lsstdio"]
+
+[[language]]
+lsp-language-id = "pkl"
+file-extensions = ["pkl"]
+primary-language-server-command = "pkl-lsp"
+
+[[language]]
+lsp-language-id = "roc"
+file-extensions = ["roc"]
+primary-language-server-command = "roc"
+primary-language-server-args = ["language-server"]
+
+# Hardware Description Languages
+[[language]]
+lsp-language-id = "verilog"
+file-extensions = ["v", "vh"]
+primary-language-server-command = "svlangserver"
+
+[[language]]
+lsp-language-id = "systemverilog"
+file-extensions = ["sv", "svh", "svi", "svp", "sva"]
+primary-language-server-command = "verible-verilog-ls"
+
+[[language]]
+lsp-language-id = "vhdl"
+file-extensions = ["vhd", "vhdl"]
+primary-language-server-command = "vhdl_ls"
+
+# Assembly
+[[language]]
+lsp-language-id = "asm"
+file-extensions = ["asm", "s", "S"]
+primary-language-server-command = "asm-lsp"
+
+[[language]]
+lsp-language-id = "gas"
+file-extensions = ["s", "S"]
+primary-language-server-command = "asm-lsp"
+
+# Domain-Specific
+[[language]]
+lsp-language-id = "solidity"
+file-extensions = ["sol"]
+primary-language-server-command = "solc"
+primary-language-server-args = ["--lsp"]
+
+[[language]]
+lsp-language-id = "cairo"
+file-extensions = ["cairo"]
+primary-language-server-command = "cairo-language-server"
+
+[[language]]
+lsp-language-id = "templ"
+file-extensions = ["templ"]
+roots = ["go.work", "go.mod"]
+primary-language-server-command = "templ"
+primary-language-server-args = ["lsp"]
+
+[[language]]
+lsp-language-id = "beancount"
+file-extensions = ["beancount", "bean"]
+primary-language-server-command = "beancount-language-server"
+
+[[language]]
+lsp-language-id = "dhall"
+file-extensions = ["dhall"]
+primary-language-server-command = "dhall-lsp-server"
+
+[[language]]
+lsp-language-id = "cue"
+file-extensions = ["cue"]
+roots = ["cue.mod"]
+primary-language-server-command = "cuelsp"
+
+[[language]]
+lsp-language-id = "nickel"
+file-extensions = ["ncl"]
+primary-language-server-command = "nls"
+
+[[language]]
+lsp-language-id = "jsonnet"
+file-extensions = ["jsonnet", "libsonnet"]
+roots = ["jsonnetfile.json"]
+primary-language-server-command = "jsonnet-language-server"
+primary-language-server-args = ["-t", "--lint"]
+
+[[language]]
+lsp-language-id = "jq"
+file-extensions = ["jq"]
+primary-language-server-command = "jq-lsp"
+
+# Test Languages
+[[language]]
+lsp-language-id = "gherkin"
+file-extensions = ["feature"]
+primary-language-server-command = "cucumber-language-server"
+primary-language-server-args = ["--stdio"]
+
+# Query Languages
+[[language]]
+lsp-language-id = "query"
+file-extensions = ["scm"]
+globs = [
+  "queries/*.scm",
+  "injections.scm",
+  "highlights.scm",
+  "indents.scm",
+  "textobjects.scm",
+  "locals.scm",
+  "tags.scm",
+]
+primary-language-server-command = "ts_query_ls"
+
+# Other Configuration/Data Formats
+[[language]]
+lsp-language-id = "ini"
+file-extensions = ["ini"]
+globs = [".editorconfig"]
+primary-language-server-command = "taplo"
+primary-language-server-args = ["lsp", "stdio"]
+
+[[language]]
+lsp-language-id = "robots"
+file-extensions = ["robot"]
+primary-language-server-command = "robotframework_ls"
+
+[[language]]
+lsp-language-id = "requirements"
+file-extensions = ["requirements"]
+globs = ["requirements*.txt"]
+primary-language-server-command = "pylsp"
+
+# Blockchain/Web3
+[[language]]
+lsp-language-id = "move"
+file-extensions = ["move"]
+roots = ["Move.toml"]
+primary-language-server-command = "move-language-server"
+
+[[language]]
+lsp-language-id = "circom"
+file-extensions = ["circom"]
+primary-language-server-command = "circom-lsp"
+
+# Misc Languages
+[[language]]
+lsp-language-id = "ada"
+file-extensions = ["adb", "ads", "ada"]
+roots = ["alire.toml"]
+primary-language-server-command = "ada-language-server"
+
+[[language]]
+lsp-language-id = "pascal"
+file-extensions = ["pas", "pp", "inc"]
+# Note: Pascal has no standard root file (relies on config order for .inc conflicts)
+primary-language-server-command = "pasls"
+
+[[language]]
+lsp-language-id = "fortran"
+file-extensions = ["f", "for", "f77", "f90", "f95", "f03", "f08"]
+roots = ["fpm.toml"]
+primary-language-server-command = "fortls"
+primary-language-server-args = ["--lowercase_intrinsics"]
+
+[[language]]
+lsp-language-id = "d"
+file-extensions = ["d"]
+primary-language-server-command = "serve-d"
+
+[[language]]
+lsp-language-id = "vala"
+file-extensions = ["vala", "vapi"]
+primary-language-server-command = "vala-language-server"
+
+[[language]]
+lsp-language-id = "openscad"
+file-extensions = ["scad"]
+primary-language-server-command = "openscad-lsp"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "wasm"
+file-extensions = ["wat", "wast"]
+primary-language-server-command = "wasm-language-tools"
+
+[[language]]
+lsp-language-id = "elvish"
+file-extensions = ["elv"]
+primary-language-server-command = "elvish"
+primary-language-server-args = ["-lsp"]
+
+[[language]]
+lsp-language-id = "bicep"
+file-extensions = ["bicep"]
+primary-language-server-command = "bicep-langserver"
+
+[[language]]
+lsp-language-id = "qml"
+file-extensions = ["qml"]
+primary-language-server-command = "qmlls"
+
+[[language]]
+lsp-language-id = "slint"
+file-extensions = ["slint"]
+primary-language-server-command = "slint-lsp"
+
+[[language]]
+lsp-language-id = "dot"
+file-extensions = ["dot", "gv"]
+primary-language-server-command = "dot-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "systemd"
+file-extensions = [
+  "service",
+  "socket",
+  "device",
+  "mount",
+  "automount",
+  "swap",
+  "target",
+  "path",
+  "timer",
+  "slice",
+  "scope",
+]
+primary-language-server-command = "systemd-lsp"
+
+[[language]]
+lsp-language-id = "htmldjango"
+file-extensions = []
+globs = ["templates/*.html", "*/templates/*.html"]
+roots = ["manage.py"]
+primary-language-server-command = "djlsp"
+
+[[language]]
+lsp-language-id = "rescript"
+file-extensions = ["res", "resi"]
+roots = ["bsconfig.json"]
+primary-language-server-command = "rescript-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "sway"
+file-extensions = ["sw"]
+roots = ["Forc.toml", "Forc.lock"]
+primary-language-server-command = "forc"
+primary-language-server-args = ["lsp"]
+
+[[language]]
+lsp-language-id = "bass"
+file-extensions = ["bass"]
+primary-language-server-command = "bass"
+primary-language-server-args = ["--lsp"]
+
+[[language]]
+lsp-language-id = "pest"
+file-extensions = ["pest"]
+primary-language-server-command = "pest-language-server"
+
+[[language]]
+lsp-language-id = "forth"
+file-extensions = ["fs", "fth", "4th"]
+# Note: Forth has no standard root file (relies on config order for .fs conflict with F#)
+primary-language-server-command = "forth-lsp"
+
+[[language]]
+lsp-language-id = "amber"
+file-extensions = ["ab"]
+primary-language-server-command = "amber-lsp"
+
+[[language]]
+lsp-language-id = "koto"
+file-extensions = ["koto"]
+primary-language-server-command = "koto-ls"
+
+[[language]]
+lsp-language-id = "spade"
+file-extensions = ["spade"]
+primary-language-server-command = "spade-language-server"
+
+[[language]]
+lsp-language-id = "quint"
+file-extensions = ["qnt"]
+primary-language-server-command = "quint-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "codeql"
+file-extensions = ["ql", "qll"]
+primary-language-server-command = "codeql"
+primary-language-server-args = [
+  "execute",
+  "language-server",
+  "--check-errors=ON_CHANGE",
+]
+
+[[language]]
+lsp-language-id = "yarnlock"
+file-extensions = []
+globs = ["yarn.lock"]
+primary-language-server-command = "yls"
+primary-language-server-args = ["-vv"]
+
+[[language]]
+lsp-language-id = "sourcepawn"
+file-extensions = ["sp", "inc"]
+# Note: SourcePawn has no standard root file (relies on config order for .inc conflicts)
+primary-language-server-command = "sourcepawn-studio"
+
+[[language]]
+lsp-language-id = "clarity"
+file-extensions = ["clar"]
+roots = ["Clarinet.toml"]
+primary-language-server-command = "clarinet"
+primary-language-server-args = ["lsp"]
+
+[[language]]
+lsp-language-id = "earthfile"
+file-extensions = []
+globs = ["Earthfile"]
+roots = ["Earthfile"]
+primary-language-server-command = "earthlyls"
+
+[[language]]
+lsp-language-id = "helm"
+file-extensions = []
+globs = ["Chart.yaml", "values.yaml", "templates/*.yaml", "templates/*.yml"]
+roots = ["Chart.yaml"]
+primary-language-server-command = "helm_ls"
+primary-language-server-args = ["serve"]
+
+[[language]]
+lsp-language-id = "ember"
+file-extensions = ["hbs", "handlebars"]
+roots = ["package.json", "ember-cli-build.js"]
+primary-language-server-command = "ember-language-server"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "meson"
+file-extensions = []
+globs = ["meson.build", "meson_options.txt"]
+primary-language-server-command = "mesonlsp"
+primary-language-server-args = ["--lsp"]
+
+[[language]]
+lsp-language-id = "bitbake"
+file-extensions = ["bb", "bbappend", "bbclass", "inc"]
+# Note: Bitbake root detection via globs (conf/*.conf), not roots field
+primary-language-server-command = "bitbake-language-server"
+
+[[language]]
+lsp-language-id = "hyprlang"
+file-extensions = ["hl"]
+globs = ["hypr*.conf"]
+roots = ["hyprland.conf"]
+primary-language-server-command = "hyprls"
+
+[[language]]
+lsp-language-id = "devicetree"
+file-extensions = ["dts", "dtsi"]
+primary-language-server-command = "dts-lsp"
+
+[[language]]
+lsp-language-id = "blueprint"
+file-extensions = ["blp"]
+primary-language-server-command = "blueprint-compiler"
+primary-language-server-args = ["lsp"]
+
+[[language]]
+lsp-language-id = "markdoc"
+file-extensions = ["mdoc"]
+primary-language-server-command = "markdoc-ls"
+primary-language-server-args = ["--stdio"]
+
+[[language]]
+lsp-language-id = "smithy"
+file-extensions = ["smithy"]
+roots = ["smithy-build.json"]
+primary-language-server-command = "cs"
+primary-language-server-args = [
+  "launch",
+  "--contrib",
+  "smithy-language-server",
+  "--",
+  "0",
+]
+
+[[language]]
+lsp-language-id = "starlark"
+file-extensions = ["star", "bzl"]
+globs = ["BUILD", "BUILD.bazel", "WORKSPACE", "WORKSPACE.bazel"]
+primary-language-server-command = "starpls"
+
+[[language]]
+lsp-language-id = "rego"
+file-extensions = ["rego"]
+primary-language-server-command = "regols"

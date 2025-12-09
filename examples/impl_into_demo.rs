@@ -16,13 +16,13 @@ struct WebServerConfig {
     #[builder(required)]
     port: u16,
 
-    #[builder(default = "String::from(\"web\")")]
+    #[builder(default = String::from("web"))]
     name: String, // Can accept &str via Into
 
-    #[builder(default = "PathBuf::from(\"/var/log/app.log\")")]
+    #[builder(default = PathBuf::from("/var/log/app.log"))]
     log_file: PathBuf, // Can accept &str, &Path via Into
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     allowed_origins: Vec<String>, // Can accept &str slice via Into
 
     #[builder(impl_into = false)] // Override: must use HashMap directly
@@ -42,10 +42,10 @@ struct UserProfile {
     #[builder(impl_into = true)] // Explicit impl_into for optional field
     display_name: Option<String>,
 
-    #[builder(default = "Vec::new()", impl_into = false)] // Override: no impl_into
+    #[builder(default = Vec::new(), impl_into = false)] // Override: no impl_into
     tags: Vec<String>,
 
-    #[builder(default = "false")]
+    #[builder(default = false)]
     is_admin: bool,
 }
 

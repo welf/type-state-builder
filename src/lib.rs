@@ -38,7 +38,7 @@
 //!     #[builder(required)]
 //!     email: String,
 //!
-//!     #[builder(default = "Some(30)")] // Default value for age
+//!     #[builder(default = Some(30))] // Default value for age
 //!     age: Option<u32>,
 //!
 //!     #[builder(setter_prefix = "is_")] // The setter is now named `is_active`
@@ -73,7 +73,7 @@
 //! - `#[builder(required)]` - Mark field as required
 //! - `#[builder(setter_name = "name")]` - Custom setter method name
 //! - `#[builder(setter_prefix = "prefix_")]` - Custom prefix for setter method name
-//! - `#[builder(default = "value|expression")]` - Custom default value
+//! - `#[builder(default = expression)]` - Custom default value
 //! - `#[builder(skip_setter)]` - Don't generate setter (requires default)
 //! - `#[builder(impl_into)]` - Generate setter with `impl Into<FieldType>` parameter
 //! - `#[builder(impl_into = false)]` - Override struct-level `impl_into` for this field
@@ -95,10 +95,10 @@
 //!     #[builder(required, setter_name = "set_content")]
 //!     content: String,
 //!
-//!     #[builder(default = "42")]
+//!     #[builder(default = 42)]
 //!     page_count: u32,
 //!
-//!     #[builder(default = "String::from(\"draft\")", skip_setter)]
+//!     #[builder(default = String::from("draft"), skip_setter)]
 //!     status: String,
 //! }
 //!
@@ -265,10 +265,10 @@
 //!     #[builder(impl_into = true)]
 //!     description: Option<String>,         // Explicit: accepts impl Into<String>
 //!
-//!     #[builder(default = "PathBuf::from(\"/tmp\")")]
+//!     #[builder(default = PathBuf::from("/tmp"))]
 //!     work_dir: PathBuf,                   // Inherits: accepts impl Into<PathBuf>
 //!
-//!     #[builder(impl_into = false, default = "Vec::new()")]
+//!     #[builder(impl_into = false, default = Vec::new())]
 //!     tags: Vec<String>,                   // Override: requires Vec<String>
 //! }
 //!
@@ -429,10 +429,10 @@
 //!     debug: bool,
 //!     max_connections: Option<u32>,
 //!
-//!     #[builder(default = "\"default.log\".to_string()")]
+//!     #[builder(default = "default.log".to_string())]
 //!     log_file: String,
 //!
-//!     #[builder(skip_setter, default = "42")]
+//!     #[builder(skip_setter, default = 42)]
 //!     magic_number: i32,
 //! }
 //!
@@ -464,7 +464,7 @@
 //!
 //! #[derive(TypeStateBuilder)]
 //! struct BadConfig {
-//!     #[builder(required, default = "test")]  // ERROR: Invalid combination
+//!     #[builder(required, default = test)]  // ERROR: Invalid combination
 //!     name: String,
 //! }
 //! ```
@@ -613,7 +613,7 @@ mod validation;
 /// - `#[builder(required)]` - Field must be set before build() (creates type-state builder)
 /// - `#[builder(setter_name = "name")]` - Custom setter method name
 /// - `#[builder(setter_prefix = "prefix_")]` - Custom prefix for this field's setter (overrides struct-level)
-/// - `#[builder(default = "expr")]` - Custom default value (must be valid Rust expression)
+/// - `#[builder(default = expr)]` - Custom default value (must be valid Rust expression)
 /// - `#[builder(skip_setter)]` - Don't generate setter method (requires default value)
 ///
 /// # Generated Methods
@@ -761,7 +761,7 @@ mod tests {
                 #[builder(required, setter_name = "set_name")]
                 name: String,
 
-                #[builder(default = "42")]
+                #[builder(default = 42)]
                 count: i32,
             }
         };

@@ -9,10 +9,10 @@ struct Document {
     #[builder(required, setter_name = "set_content")]
     content: String,
 
-    #[builder(default = "42")]
+    #[builder(default = 42)]
     page_count: u32,
 
-    #[builder(default = "String::from(\"draft\")", skip_setter)]
+    #[builder(default = String::from("draft"), skip_setter)]
     status: String,
 }
 

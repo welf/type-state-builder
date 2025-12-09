@@ -294,24 +294,20 @@ impl FieldInfo {
     /// Returns errors for:
     /// - Invalid default value expressions
     /// - Malformed default value syntax
-    pub fn create_default_config(&self) -> syn::Result<DefaultConfig> {
+    pub fn create_default_config(&self) -> DefaultConfig {
         let has_custom_default = self.attributes().default_value.is_some();
 
-        let default_expression = if let Some(default_str) = &self.attributes().default_value {
-            // Parse the custom default value as an expression
-            Some(syn::parse_str::<syn::Expr>(default_str)?)
-        } else {
-            None
-        };
+        // default_value is already a syn::Expr, just clone it
+        let default_expression = self.attributes().default_value.clone();
 
         // If no custom default, we'll need to use Default::default()
         let requires_default_trait = !has_custom_default;
 
-        Ok(DefaultConfig {
+        DefaultConfig {
             _has_custom_default: has_custom_default,
             default_expression,
             _requires_default_trait: requires_default_trait,
-        })
+        }
     }
 
     /// Generates field initialization code for builder constructors.
@@ -348,7 +344,7 @@ impl FieldInfo {
             })
         } else {
             // Optional field or required field in set state
-            let default_config = self.create_default_config()?;
+            let default_config = self.create_default_config();
 
             if let Some(default_expr) = default_config.default_expression {
                 // Use custom default value
@@ -565,7 +561,8 @@ mod tests {
             FieldInfo::from_syn_field(parse_quote!(count), parse_quote!(i32), &attrs).unwrap();
 
         assert!(field.has_custom_default());
-        assert_eq!(field.attributes().default_value, Some("42".to_string()));
+        // default_value is now a syn::Expr, verify it exists
+        assert!(field.attributes().default_value.is_some());
     }
 
     #[test]
@@ -631,7 +628,7 @@ mod tests {
             FieldInfo::from_syn_field(parse_quote!(count), parse_quote!(i32), &custom_attrs)
                 .unwrap();
 
-        let config = field.create_default_config().unwrap();
+        let config = field.create_default_config();
         assert!(config._has_custom_default);
         assert!(config.default_expression.is_some());
     }

@@ -35,22 +35,22 @@ fn test_http_client_configuration() {
         #[builder(required)]
         api_key: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         client_type: PhantomData<C>,
 
-        #[builder(default = "Duration::from_secs(30)")]
+        #[builder(default = Duration::from_secs(30))]
         timeout: Duration,
 
-        #[builder(default = "10")]
+        #[builder(default = 10)]
         max_retries: u32,
 
-        #[builder(default = "HashMap::new()")]
+        #[builder(default = HashMap::new())]
         default_headers: HashMap<String, String>,
 
         user_agent: Option<String>,
         proxy_url: Option<String>,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         verify_ssl: bool,
     }
 
@@ -104,24 +104,24 @@ fn test_database_connection_pool() {
         #[builder(required)]
         max_connections: usize,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         driver: PhantomData<D>,
 
-        #[builder(default = "1")]
+        #[builder(default = 1)]
         min_connections: usize,
 
-        #[builder(default = "std::time::Duration::from_secs(30)")]
+        #[builder(default = std::time::Duration::from_secs(30))]
         connection_timeout: std::time::Duration,
 
-        #[builder(default = "std::time::Duration::from_secs(600)")]
+        #[builder(default = std::time::Duration::from_secs(600))]
         idle_timeout: std::time::Duration,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         test_on_checkout: bool,
 
         initialization_query: Option<String>,
 
-        #[builder(skip_setter, default = "Arc::new(Mutex::new(Vec::new()))")]
+        #[builder(skip_setter, default = Arc::new(Mutex::new(Vec::new())))]
         connection_pool: Arc<Mutex<Vec<D::Connection>>>,
     }
 
@@ -188,21 +188,21 @@ fn test_async_task_scheduler() {
         #[builder(required)]
         scheduler_name: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         error_type: PhantomData<E>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         lifetime_marker: PhantomData<&'a ()>,
 
-        #[builder(default = "1")]
+        #[builder(default = 1)]
         max_concurrent_tasks: usize,
 
-        #[builder(default = "std::time::Duration::from_millis(100)")]
+        #[builder(default = std::time::Duration::from_millis(100))]
         poll_interval: std::time::Duration,
 
         retry_policy: Option<fn(u32) -> std::time::Duration>,
 
-        #[builder(default = "None")]
+        #[builder(default = None)]
         max_retries: Option<u32>,
     }
 
@@ -315,16 +315,16 @@ fn test_configuration_management() {
 
         backup_sources: Option<Vec<S>>,
 
-        #[builder(default = "BTreeMap::new()")]
+        #[builder(default = BTreeMap::new())]
         cached_values: BTreeMap<String, String>,
 
-        #[builder(default = "std::time::Duration::from_secs(60)")]
+        #[builder(default = std::time::Duration::from_secs(60))]
         refresh_interval: std::time::Duration,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         auto_refresh: bool,
 
-        #[builder(skip_setter, default = "std::time::SystemTime::now()")]
+        #[builder(skip_setter, default = std::time::SystemTime::now())]
         last_refresh: std::time::SystemTime,
     }
 
@@ -427,19 +427,19 @@ fn test_event_driven_system() {
         #[builder(required)]
         error_callback: F,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         event_phantom: PhantomData<E>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         lifetime_phantom: PhantomData<&'a ()>,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         async_processing: bool,
 
-        #[builder(default = "1000")]
+        #[builder(default = 1000)]
         max_queue_size: usize,
 
-        #[builder(default = "std::time::Duration::from_millis(10)")]
+        #[builder(default = std::time::Duration::from_millis(10))]
         batch_timeout: std::time::Duration,
 
         dead_letter_queue: Option<String>,
@@ -569,21 +569,21 @@ fn test_microservice_communication() {
         #[builder(required)]
         transport_error_handler: G,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         lifetime_phantom: PhantomData<&'a ()>,
 
-        #[builder(default = "std::time::Duration::from_secs(30)")]
+        #[builder(default = std::time::Duration::from_secs(30))]
         request_timeout: std::time::Duration,
 
-        #[builder(default = "3")]
+        #[builder(default = 3)]
         max_retries: u32,
 
-        #[builder(default = "HashMap::new()")]
+        #[builder(default = HashMap::new())]
         service_registry: HashMap<String, String>,
 
         circuit_breaker_threshold: Option<u32>,
 
-        #[builder(default = "\"1.0\".to_string()")]
+        #[builder(default = "1.0".to_string())]
         api_version: String,
     }
 
@@ -688,22 +688,22 @@ fn test_distributed_cache_system() {
         #[builder(required)]
         error_handler: F,
 
-        #[builder(default = "Duration::from_secs(3600)")]
+        #[builder(default = Duration::from_secs(3600))]
         default_ttl: Duration,
 
-        #[builder(default = "\"cache_v1\".to_string()")]
+        #[builder(default = "cache_v1".to_string())]
         key_prefix: String,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         compression_enabled: bool,
 
-        #[builder(default = "1000")]
+        #[builder(default = 1000)]
         max_key_size: usize,
 
-        #[builder(default = "10_000_000")]
+        #[builder(default = 10_000_000)]
         max_value_size: usize,
 
-        #[builder(skip_setter, default = "HashMap::new()")]
+        #[builder(skip_setter, default = HashMap::new())]
         local_stats: HashMap<String, u64>,
 
         replication_factor: Option<usize>,
@@ -809,30 +809,30 @@ fn test_ml_pipeline() {
         #[builder(required)]
         model_error_handler: G,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         input_type: PhantomData<I>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         intermediate_type: PhantomData<T>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         output_type: PhantomData<O>,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         lifetime_marker: PhantomData<&'a ()>,
 
-        #[builder(default = "true")]
+        #[builder(default = true)]
         enable_caching: bool,
 
-        #[builder(default = "1000")]
+        #[builder(default = 1000)]
         batch_size: usize,
 
-        #[builder(default = "0.95")]
+        #[builder(default = 0.95)]
         confidence_threshold: f32,
 
         model_version: Option<String>,
 
-        #[builder(skip_setter, default = "SystemTime::now()")]
+        #[builder(skip_setter, default = SystemTime::now())]
         created_at: SystemTime,
     }
 

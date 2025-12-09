@@ -18,7 +18,7 @@ where
 
     third: V,
 
-    #[builder(default = "None")]
+    #[builder(default = None)]
     optional: Option<String>,
 }
 
@@ -34,7 +34,7 @@ where
     #[builder(required)]
     metadata: &'b str,
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     tags: Vec<&'a str>,
 
     nested: Option<Box<T>>,
@@ -50,7 +50,7 @@ where
     #[builder(required)]
     primary_map: std::collections::HashMap<K, V>,
 
-    #[builder(default = "std::collections::BTreeMap::new()")]
+    #[builder(default = std::collections::BTreeMap::new())]
     secondary_map: std::collections::BTreeMap<String, Vec<V>>,
 
     cache: Option<std::collections::HashMap<K, std::collections::HashSet<V>>>,
@@ -62,7 +62,7 @@ struct PhantomGeneric<T, U> {
     #[builder(required)]
     value: String,
 
-    #[builder(default = "42")]
+    #[builder(default = 42)]
     number: i32,
 
     _phantom: std::marker::PhantomData<(T, U)>,
@@ -77,7 +77,7 @@ where
     #[builder(required)]
     data: [T; N],
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     dynamic_data: Vec<T>,
 }
 
@@ -91,7 +91,7 @@ struct TraitBounded<T: CustomTrait + Clone> {
     #[builder(required)]
     item: T,
 
-    #[builder(default = "Vec::new()")]
+    #[builder(default = Vec::new())]
     collection: Vec<T>,
 }
 

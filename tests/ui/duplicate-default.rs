@@ -5,8 +5,8 @@ struct DuplicateDefault {
     name: String,
 
     // This should be an error: duplicate default attributes
-    #[builder(default = "42")]
-    #[builder(default = "100")]
+    #[builder(default = 42)]
+    #[builder(default = 100)]
     count: u32,
 }
 

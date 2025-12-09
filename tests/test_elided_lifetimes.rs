@@ -135,7 +135,7 @@ fn test_struct_with_phantom_data_and_lifetimes() {
         #[builder(required)]
         data: String,
 
-        #[builder(skip_setter, default = "PhantomData")]
+        #[builder(skip_setter, default = PhantomData)]
         phantom: PhantomData<&'a T>,
     }
 
