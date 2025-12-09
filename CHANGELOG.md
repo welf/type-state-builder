@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-12-09
+
 ### Changed
 
 - **BREAKING**: Default value syntax now uses direct expressions instead of string literals
@@ -158,7 +160,8 @@ struct Config {
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/welf/type-state-builder/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/welf/type-state-builder/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/welf/type-state-builder/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/welf/type-state-builder/compare/v0.1.2...v0.2.0
