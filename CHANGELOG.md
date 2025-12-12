@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-12
+
+### Added
+
+- **Const builder support** with `#[builder(const)]` attribute
+  - All builder methods (`builder()`, setters, `build()`) generated as `const fn`
+  - Enables compile-time constant construction for embedded systems, static configuration, etc.
+  - Closure converters automatically transformed to `const fn` helpers
+  - Uses struct reconstruction pattern (`Self { field, ..self }`) for const compatibility
+
+### Validation
+
+- Require explicit defaults for optional fields when using const builders (`Default::default()` is not const)
+- Disallow `impl_into` attribute with const builders (trait bounds not supported in const fn)
+- Skip `Default` trait implementation for const builders
+
 ## [0.4.0] - 2025-12-09
 
 ### Changed
@@ -160,7 +176,8 @@ struct Config {
 - All code follows secure coding practices with proper error handling
 - No unsafe code blocks used throughout the implementation
 
-[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/welf/type-state-builder/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/welf/type-state-builder/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/welf/type-state-builder/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/welf/type-state-builder/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/welf/type-state-builder/compare/v0.2.0...v0.3.0
