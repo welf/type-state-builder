@@ -1,26 +1,56 @@
 //! Type-State Builder Pattern Implementation
 //!
-//! This crate provides a derive macro for implementing the Type-State Builder pattern
-//! in Rust, enabling compile-time validation of required fields and zero-cost builder
-//! abstractions.
+//! A derive macro that generates compile-time safe builders using the type-state pattern.
+//! It prevents incomplete object construction by making missing required fields a
+//! compile-time error rather than a runtime failure.
+//!
+//! For complete documentation, installation instructions, and guides, see the
+//! [README](https://github.com/welf/type-state-builder#readme).
+//!
+//! # Design Philosophy
+//!
+//! This crate was designed with AI-assisted development in mind. Two principles
+//! guided its design:
+//!
+//! ## Compiler-Enforced Correctness
+//!
+//! In AI-assisted development, code generation happens rapidly. By encoding field
+//! requirements in the type system, errors are caught immediately by the compiler
+//! rather than manifesting as runtime failures. If the code compiles, the builder
+//! is correctly configured.
+//!
+//! ## Actionable Error Messages
+//!
+//! Instead of using generic type parameters to track field states (which produce
+//! cryptic error messages), this crate generates named structs for each state:
+//!
+//! ```text
+//! UserBuilder_HasName_MissingEmail    // Name set, email missing
+//! UserBuilder_HasName_HasEmail        // Both set - build() available
+//! ```
+//!
+//! When an error occurs, the type name immediately indicates which fields are missing.
+//! This is particularly valuable for AI assistants that can parse and act on the error.
+//!
+//! ## Trade-offs
+//!
+//! This approach generates more structs than type-parameter-based solutions, slightly
+//! increasing compile time. However, the improved error message clarity is worth this
+//! cost. There is no runtime cost due to Rust's zero-cost abstractions.
+//!
+//! # Compatibility
+//!
+//! - **no_std**: Fully compatible. Generated code uses only `core` types.
+//! - **MSRV**: Rust 1.70.0 or later.
 //!
 //! # Overview
 //!
-//! The Type-State Builder pattern uses Rust's type system to enforce compile-time
-//! validation of required fields. It automatically selects between two builder patterns:
+//! The macro automatically selects between two builder patterns:
 //!
 //! - **Type-State Builder**: For structs with required fields, providing compile-time
 //!   safety that prevents calling `build()` until all required fields are set
 //! - **Regular Builder**: For structs with only optional fields, providing a simple
 //!   builder with immediate `build()` availability
-//!
-//! # Key Features
-//!
-//! - **Zero Runtime Cost**: All validation happens at compile time
-//! - **Automatic Pattern Selection**: Chooses the best builder pattern for your struct
-//! - **Comprehensive Generic Support**: Handles complex generic types and lifetimes
-//! - **Flexible Configuration**: Extensive attribute-based customization
-//! - **Excellent Error Messages**: Clear guidance for fixing configuration issues
 //!
 //! # Quick Start
 //!
@@ -400,10 +430,10 @@
 //! | Feature | `impl_into` | `converter` |
 //! |---------|-------------|-------------|
 //! | **Type conversions** | Only `Into` trait | Any custom logic |
-//! | **Parsing strings** | ❌ Limited | ✅ Full support |
-//! | **Data validation** | ❌ No | ✅ Custom validation |
-//! | **Complex transformations** | ❌ No | ✅ Full support |
-//! | **Multiple input formats** | ❌ Into only | ✅ Any input type |
+//! | **Parsing strings** | Limited | Full support |
+//! | **Data validation** | No | Custom validation |
+//! | **Complex transformations** | No | Full support |
+//! | **Multiple input formats** | Into only | Any input type |
 //! | **Performance** | Zero-cost | Depends on logic |
 //! | **Syntax** | Attribute flag | Closure expression |
 //!

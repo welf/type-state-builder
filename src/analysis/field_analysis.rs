@@ -340,7 +340,7 @@ impl FieldInfo {
         if is_required_unset {
             // Required field in unset state - initialize as None
             Ok(quote! {
-                #field_name: ::std::option::Option::None,
+                #field_name: ::core::option::Option::None,
             })
         } else {
             // Optional field or required field in set state
@@ -371,7 +371,7 @@ impl FieldInfo {
                         // This will generate a helpful error if Default is not implemented
                         #[allow(unused)]
                         const _HELP: &str = #helpful_message;
-                        <#field_type as ::std::default::Default>::default()
+                        <#field_type as ::core::default::Default>::default()
                     },
                 })
             }

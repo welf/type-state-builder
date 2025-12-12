@@ -544,7 +544,7 @@ pub fn generate_phantom_data_type<'a>(
     } else {
         // Create PhantomData with tuple of all types
         // The tuple ensures all generic parameters are properly tracked
-        quote! { ::std::marker::PhantomData<( #(#phantom_types),* )> }
+        quote! { ::core::marker::PhantomData<( #(#phantom_types),* )> }
     }
 }
 

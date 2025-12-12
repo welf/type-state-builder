@@ -187,17 +187,10 @@ impl<'a> TokenGenerator<'a> {
             match method_name {
                 "builder" => {
                     doc_lines.push(String::new());
-                    doc_lines.push("# Usage".to_string());
-                    doc_lines.push(String::new());
                     let build_method_name =
                         self.analysis.struct_attributes().get_build_method_name();
                     doc_lines.push(format!(
-                        "Create a builder, set required fields, then call {build_method_name}():"
-                    ));
-                    doc_lines.push(format!(
-                        "```rust,ignore\nlet instance = {}::builder()\n    // .required_field(value)\n    .{}();\n```",
-                        self.analysis.struct_name(),
-                        build_method_name
+                        "Create a builder, set required fields, then call `{build_method_name}()`."
                     ));
                 }
                 "build" => {
@@ -268,16 +261,16 @@ impl<'a> TokenGenerator<'a> {
     ///
     /// # Examples
     ///
-    /// - Qualified: `::std::option::Option`
+    /// - Qualified: `::core::option::Option`
     /// - Unqualified: `Option`
     pub fn generate_type_path(&self, type_name: &str) -> TokenStream {
         if self.config.use_qualified_paths {
             match type_name {
-                "Option" => quote! { ::std::option::Option },
-                "Vec" => quote! { ::std::vec::Vec },
-                "String" => quote! { ::std::string::String },
-                "Default" => quote! { ::std::default::Default },
-                "PhantomData" => quote! { ::std::marker::PhantomData },
+                "Option" => quote! { ::core::option::Option },
+                "Vec" => quote! { Vec },
+                "String" => quote! { String },
+                "Default" => quote! { ::core::default::Default },
+                "PhantomData" => quote! { ::core::marker::PhantomData },
                 _ => {
                     let ident = syn::parse_str::<syn::Ident>(type_name).unwrap_or_else(|_| {
                         syn::Ident::new("Unknown", proc_macro2::Span::call_site())
@@ -316,8 +309,8 @@ impl<'a> TokenGenerator<'a> {
 
         quote! {
             #[automatically_derived]
-            impl #impl_generics ::std::fmt::Debug for #type_name #type_generics #where_clause {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            impl #impl_generics ::core::fmt::Debug for #type_name #type_generics #where_clause {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     f.debug_struct(stringify!(#type_name)).finish()
                 }
             }
@@ -473,7 +466,7 @@ mod tests {
         let generator = TokenGenerator::new(&analysis);
 
         let path = generator.generate_type_path("Option");
-        assert_eq!(path.to_string(), ":: std :: option :: Option");
+        assert_eq!(path.to_string(), ":: core :: option :: Option");
     }
 
     #[test]
@@ -492,7 +485,7 @@ mod tests {
 
         let path = generator.generate_type_path("Option");
         // TokenGenerator uses default config with qualified paths enabled
-        assert_eq!(path.to_string(), ":: std :: option :: Option");
+        assert_eq!(path.to_string(), ":: core :: option :: Option");
     }
 
     #[test]

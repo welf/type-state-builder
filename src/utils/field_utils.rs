@@ -127,34 +127,6 @@ pub struct SetterParameterConfig {
 /// # Returns
 ///
 /// A `SetterParameterConfig` containing the parameter type and assignment expression.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// // Custom setter function
-/// let config = resolve_setter_parameter_config(
-///     &parse_quote!(Vec<String>),
-///     Some(&parse_quote!(string_vec_from_strs)),
-///     false
-/// );
-/// // Results in: param_type = <inferred>, field_assignment_expr = string_vec_from_strs(value)
-///
-/// // impl_into enabled
-/// let config = resolve_setter_parameter_config(
-///     &parse_quote!(String),
-///     None,
-///     true
-/// );
-/// // Results in: param_type = impl Into<String>, field_assignment_expr = value.into()
-///
-/// // Regular setter
-/// let config = resolve_setter_parameter_config(
-///     &parse_quote!(String),
-///     None,
-///     false
-/// );
-/// // Results in: param_type = String, field_assignment_expr = value
-/// ```
 pub fn resolve_setter_parameter_config(
     field_type: &syn::Type,
     converter: Option<&syn::Expr>,

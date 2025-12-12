@@ -26,18 +26,9 @@
 //!
 //! # Converter Attribute
 //!
-//! The `converter` attribute allows custom transformation logic for field values:
-//!
-//! ```rust,ignore
-//! #[derive(TypeStateBuilder)]
-//! struct MyStruct {
-//!     #[builder(converter = |values: Vec<&str>| values.into_iter().map(|s| s.to_string()).collect())]
-//!     tags: Vec<String>,
-//! }
-//! ```
-//!
-//! This generates a setter that accepts `Vec<&str>` and converts it to `Vec<String>`
-//! using the provided closure expression.
+//! The `converter` attribute allows custom transformation logic for field values.
+//! It generates a setter that accepts a custom input type and converts it using
+//! the provided closure expression.
 
 use crate::validation::error_messages::ErrorMessages;
 
@@ -158,16 +149,6 @@ pub struct FieldAttributes {
     ///
     /// This attribute is mutually exclusive with `impl_into` and `skip_setter`.
     /// It is compatible with `required`, `setter_name`, `setter_prefix`, and `default`.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// #[derive(TypeStateBuilder)]
-    /// struct MyStruct {
-    ///     #[builder(converter = |value: Vec<&str>| value.into_iter().map(|s| s.to_string()).collect())]
-    ///     tags: Vec<String>,
-    /// }
-    /// ```
     pub converter: Option<syn::Expr>,
 }
 
