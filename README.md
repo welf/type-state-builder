@@ -109,7 +109,7 @@ Add TypeStateBuilder to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-type-state-builder = "0.4.1"
+type-state-builder = "0.5.0"
 ```
 
 ### no_std Support
