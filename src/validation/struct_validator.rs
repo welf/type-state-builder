@@ -58,6 +58,9 @@ impl<'a> StructValidator<'a> {
         // Validate struct-level attributes
         self.validate_struct_attributes(analysis)?;
 
+        // Validate const builder requirements
+        self.validate_const_builder_requirements(analysis)?;
+
         Ok(())
     }
 
@@ -217,6 +220,63 @@ impl<'a> StructValidator<'a> {
 
         Ok(())
     }
+
+    /// Validates const builder requirements.
+    ///
+    /// When `#[builder(const)]` is enabled, this validates that:
+    /// - All optional fields have explicit default values (Default::default() is not const)
+    /// - No fields use `impl_into` (trait bounds not supported in const fn)
+    ///
+    /// # Arguments
+    ///
+    /// * `analysis` - The struct analysis to validate
+    ///
+    /// # Returns
+    ///
+    /// A `syn::Result<()>` indicating success or containing validation errors.
+    fn validate_const_builder_requirements(&self, analysis: &StructAnalysis) -> syn::Result<()> {
+        if !analysis.struct_attributes().get_const_builder() {
+            return Ok(());
+        }
+
+        // Check all fields for const-incompatible attributes
+        for field in analysis.all_fields() {
+            // Check for field-level impl_into
+            if field.attributes().impl_into == Some(true) {
+                let field_name = field.name();
+                return Err(ErrorMessages::structured_error_span(
+                    field_name.span(),
+                    &format!(
+                        "field `{}`: `impl_into` cannot be used with `#[builder(const)]`",
+                        field_name
+                    ),
+                    Some("`impl Into<T>` requires trait bounds which are not supported in const fn"),
+                    Some("remove the `impl_into` attribute from this field or remove `const` from the struct"),
+                ));
+            }
+        }
+
+        // Check that all optional fields have explicit defaults
+        for field in analysis.optional_fields() {
+            if !field.has_custom_default() {
+                let field_name = field.name();
+                return Err(ErrorMessages::structured_error_span(
+                    field_name.span(),
+                    &format!(
+                        "const builder requires explicit default for field `{}`",
+                        field_name
+                    ),
+                    Some("Default::default() cannot be used in const context"),
+                    Some(&format!(
+                        "add an explicit default: #[builder(default = <value>)] to field `{}`",
+                        field_name
+                    )),
+                ));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -274,5 +334,78 @@ mod tests {
         let result = validator.validate_struct_for_generation(&analysis);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("conflict"));
+    }
+
+    #[test]
+    fn test_const_builder_requires_explicit_defaults() {
+        // const builder without explicit default should fail
+        let input = parse_quote! {
+            #[builder(const)]
+            struct Example {
+                name: Option<String>,  // No explicit default
+            }
+        };
+
+        let analysis = analyze_struct(&input).unwrap();
+        let mut context = ValidationContext::new();
+        let mut validator = StructValidator::new(&mut context);
+        let result = validator.validate_struct_for_generation(&analysis);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("const builder requires explicit default"));
+    }
+
+    #[test]
+    fn test_const_builder_with_explicit_defaults_passes() {
+        // const builder with explicit defaults should pass
+        let input = parse_quote! {
+            #[builder(const)]
+            struct Example {
+                #[builder(default = None)]
+                name: Option<String>,
+            }
+        };
+
+        let analysis = analyze_struct(&input).unwrap();
+        let mut context = ValidationContext::new();
+        let mut validator = StructValidator::new(&mut context);
+        assert!(validator.validate_struct_for_generation(&analysis).is_ok());
+    }
+
+    #[test]
+    fn test_const_builder_with_required_fields_passes() {
+        // const builder with required fields only (no defaults needed) should pass
+        let input = parse_quote! {
+            #[builder(const)]
+            struct Example {
+                #[builder(required)]
+                name: String,
+            }
+        };
+
+        let analysis = analyze_struct(&input).unwrap();
+        let mut context = ValidationContext::new();
+        let mut validator = StructValidator::new(&mut context);
+        assert!(validator.validate_struct_for_generation(&analysis).is_ok());
+    }
+
+    #[test]
+    fn test_const_builder_with_field_impl_into_fails() {
+        // const builder with field-level impl_into should fail
+        let input = parse_quote! {
+            #[builder(const)]
+            struct Example {
+                #[builder(required, impl_into)]
+                name: String,
+            }
+        };
+
+        let analysis = analyze_struct(&input).unwrap();
+        let mut context = ValidationContext::new();
+        let mut validator = StructValidator::new(&mut context);
+        let result = validator.validate_struct_for_generation(&analysis);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("impl_into") && err.contains("const"));
     }
 }

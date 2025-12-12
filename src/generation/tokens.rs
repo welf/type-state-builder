@@ -53,7 +53,7 @@ pub struct TokenGenerator<'a> {
 }
 
 impl<'a> TokenGenerator<'a> {
-    /// Creates a new token generator with the default configuration.
+    /// Creates a new token generator with configuration derived from struct attributes.
     ///
     /// # Arguments
     ///
@@ -61,12 +61,17 @@ impl<'a> TokenGenerator<'a> {
     ///
     /// # Returns
     ///
-    /// A `TokenGenerator` configured with default settings.
+    /// A `TokenGenerator` configured based on struct attributes.
     ///
     pub fn new(analysis: &'a StructAnalysis) -> Self {
+        let config = GenerationConfig {
+            const_builder: analysis.struct_attributes().get_const_builder(),
+            ..Default::default()
+        };
+
         Self {
             analysis,
-            config: GenerationConfig::default(),
+            config,
             phantom_data_field_name: generate_unique_identifier("_marker"),
         }
     }
@@ -87,6 +92,30 @@ impl<'a> TokenGenerator<'a> {
     /// A reference to the `GenerationConfig` used by this generator.
     pub fn config(&self) -> &GenerationConfig {
         &self.config
+    }
+
+    /// Returns whether const-compatible builder methods should be generated.
+    ///
+    /// # Returns
+    ///
+    /// `true` if all builder methods should be `const fn`, `false` otherwise.
+    pub fn is_const_builder(&self) -> bool {
+        self.config.const_builder
+    }
+
+    /// Returns the `const` keyword token if const builder is enabled, otherwise empty.
+    ///
+    /// This helper method simplifies conditional const generation in method signatures.
+    ///
+    /// # Returns
+    ///
+    /// A `TokenStream` containing `const` if const builder is enabled, empty otherwise.
+    pub fn const_keyword(&self) -> TokenStream {
+        if self.config.const_builder {
+            quote! { const }
+        } else {
+            quote! {}
+        }
     }
 
     /// Gets the consistent PhantomData field name for this generator.

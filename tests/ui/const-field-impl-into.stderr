@@ -1,0 +1,7 @@
+error: field `name`: `impl_into` cannot be used with `#[builder(const)]`
+       note: `impl Into<T>` requires trait bounds which are not supported in const fn
+       help: remove the `impl_into` attribute from this field or remove `const` from the struct
+ --> tests/ui/const-field-impl-into.rs:8:5
+  |
+8 |     name: String,
+  |     ^^^^

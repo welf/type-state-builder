@@ -387,13 +387,13 @@ impl FieldInfo {
     ///
     /// * `return_type` - The type that the setter method should return
     /// * `struct_setter_prefix` - Optional struct-level setter prefix from struct attributes
+    /// * `struct_impl_into` - Whether struct-level impl_into is enabled
+    /// * `is_const` - Whether to generate const-compatible methods
     ///
     /// # Returns
     ///
     /// A `syn::Result<proc_macro2::TokenStream>` containing the complete
     /// setter method or an error for invalid configurations.
-    ///
-    ///
     ///
     /// # Errors
     ///
@@ -406,7 +406,10 @@ impl FieldInfo {
         return_type: &Type,
         struct_setter_prefix: Option<&str>,
         struct_impl_into: bool,
+        is_const: bool,
     ) -> syn::Result<proc_macro2::TokenStream> {
+        use crate::utils::field_utils::{extract_closure_info, generate_const_converter_fn_name};
+
         let config = self.create_setter_config(struct_setter_prefix);
 
         if config.skip_setter {
@@ -420,10 +423,12 @@ impl FieldInfo {
         // Determine parameter type and field assignment logic
         let field_impl_into = self.attributes().impl_into;
         let converter = self.attributes().converter.as_ref();
-        let use_impl_into = resolve_effective_impl_into(field_impl_into, struct_impl_into);
-
-        // Use the shared utility to determine parameter configuration
-        let param_config = resolve_setter_parameter_config(field_type, converter, use_impl_into);
+        // When const, force impl_into to false (trait bounds not supported in const fn)
+        let use_impl_into = if is_const {
+            false
+        } else {
+            resolve_effective_impl_into(field_impl_into, struct_impl_into)
+        };
 
         // Handle setter method name - for raw identifiers, we use the raw identifier
         let setter_ident = if config.setter_name.starts_with("r#") {
@@ -434,24 +439,59 @@ impl FieldInfo {
         };
 
         let doc_comment = &config.doc_comment;
-        let param_type = param_config.param_type;
-        let field_assignment_expr = param_config.field_assignment_expr;
 
-        // Generate assignment statement
-        let assignment = quote! { self.#field_name = #field_assignment_expr; };
+        // Handle const builders with converters specially
+        if is_const {
+            if let Some(converter_expr) = converter {
+                // For const builders with converters, generate a const fn from the closure
+                if let Some(closure_info) = extract_closure_info(converter_expr) {
+                    let const_fn_name = generate_const_converter_fn_name(&self.clean_name());
+                    let param_name = closure_info.param_name;
+                    let param_type = closure_info.param_type;
+                    let body = closure_info.body;
 
-        // Generate method signature
-        let method_signature = quote! {
-            pub fn #setter_ident(mut self, value: #param_type) -> #return_type
-        };
+                    // Const-compatible pattern with generated const fn
+                    // Note: const fn is generated as associated fn, must call with Self::
+                    return Ok(quote! {
+                        #[doc(hidden)]
+                        const fn #const_fn_name(#param_name: #param_type) -> #field_type {
+                            #body
+                        }
 
-        Ok(quote! {
-            #[doc = #doc_comment]
-            #method_signature {
-                #assignment
-                self
+                        #[doc = #doc_comment]
+                        pub const fn #setter_ident(self, value: #param_type) -> #return_type {
+                            Self { #field_name: Self::#const_fn_name(value), ..self }
+                        }
+                    });
+                }
             }
-        })
+
+            // Const without converter - use direct assignment
+            let param_config = resolve_setter_parameter_config(field_type, None, false);
+            let param_type = param_config.param_type;
+            let field_assignment_expr = param_config.field_assignment_expr;
+
+            Ok(quote! {
+                #[doc = #doc_comment]
+                pub const fn #setter_ident(self, value: #param_type) -> #return_type {
+                    Self { #field_name: #field_assignment_expr, ..self }
+                }
+            })
+        } else {
+            // Regular (non-const) pattern
+            let param_config =
+                resolve_setter_parameter_config(field_type, converter, use_impl_into);
+            let param_type = param_config.param_type;
+            let field_assignment_expr = param_config.field_assignment_expr;
+
+            Ok(quote! {
+                #[doc = #doc_comment]
+                pub fn #setter_ident(mut self, value: #param_type) -> #return_type {
+                    self.#field_name = #field_assignment_expr;
+                    self
+                }
+            })
+        }
     }
 
     // Validation methods

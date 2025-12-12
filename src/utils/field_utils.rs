@@ -198,6 +198,84 @@ fn extract_closure_parameter_type(expr: &syn::Expr) -> Option<proc_macro2::Token
     }
 }
 
+/// Information extracted from a closure expression for const fn generation.
+#[derive(Debug)]
+pub struct ClosureInfo {
+    /// The parameter name (e.g., `value` from `|value: T| ...`)
+    pub param_name: proc_macro2::TokenStream,
+    /// The parameter type (e.g., `T` from `|value: T| ...`)
+    pub param_type: proc_macro2::TokenStream,
+    /// The closure body expression
+    pub body: proc_macro2::TokenStream,
+}
+
+/// Extracts complete information from a closure expression for const fn generation.
+///
+/// This function parses a closure expression like `|value: Vec<&str>| value.len()`
+/// and extracts:
+/// - Parameter name: `value`
+/// - Parameter type: `Vec<&str>`
+/// - Body: `value.len()`
+///
+/// # Arguments
+///
+/// * `expr` - The closure expression to parse
+///
+/// # Returns
+///
+/// An `Option<ClosureInfo>` containing the extracted information,
+/// or `None` if the expression is not a valid closure.
+pub fn extract_closure_info(expr: &syn::Expr) -> Option<ClosureInfo> {
+    match expr {
+        syn::Expr::Closure(closure) => {
+            // Get the first parameter (we expect exactly one parameter)
+            if let Some(first_param) = closure.inputs.first() {
+                match first_param {
+                    syn::Pat::Type(pat_type) => {
+                        // Extract param name and type from |name: Type| pattern
+                        let param_name = &pat_type.pat;
+                        let param_type = &pat_type.ty;
+                        let body = &closure.body;
+
+                        Some(ClosureInfo {
+                            param_name: quote::quote! { #param_name },
+                            param_type: quote::quote! { #param_type },
+                            body: quote::quote! { #body },
+                        })
+                    }
+                    _ => {
+                        // Parameter doesn't have an explicit type annotation
+                        None
+                    }
+                }
+            } else {
+                // No parameters in closure
+                None
+            }
+        }
+        _ => {
+            // Not a closure expression
+            None
+        }
+    }
+}
+
+/// Generates a const fn converter function name for a field.
+///
+/// # Arguments
+///
+/// * `field_name` - The name of the field
+///
+/// # Returns
+///
+/// A `syn::Ident` for the const converter function name.
+pub fn generate_const_converter_fn_name(field_name: &str) -> syn::Ident {
+    syn::Ident::new(
+        &format!("__const_{}_setter_converter", field_name),
+        proc_macro2::Span::call_site(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

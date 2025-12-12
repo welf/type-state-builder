@@ -124,6 +124,9 @@ pub struct GenerationConfig {
 
     /// Whether to use fully qualified paths in generated code
     pub use_qualified_paths: bool,
+
+    /// Whether to generate const-compatible builder methods
+    pub const_builder: bool,
 }
 
 impl Default for GenerationConfig {
@@ -134,12 +137,14 @@ impl Default for GenerationConfig {
     /// - Includes helpful error messages
     /// - Generates Debug implementations for easier debugging
     /// - Uses fully qualified paths for reliability
+    /// - Generates regular (non-const) methods
     fn default() -> Self {
         Self {
             include_documentation: true,
             include_error_guidance: true,
             generate_debug_impls: true,
             use_qualified_paths: true,
+            const_builder: false,
         }
     }
 }

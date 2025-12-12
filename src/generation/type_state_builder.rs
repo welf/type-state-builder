@@ -356,10 +356,12 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             Some("This builder uses the type-state pattern to ensure all required fields are set before building.")
         );
 
+        let const_kw = self.token_generator.const_keyword();
+
         Ok(quote! {
             impl #impl_generics #struct_name #type_generics #where_clause {
                 #doc
-                pub fn builder() -> #initial_builder_ident #type_generics {
+                pub #const_kw fn builder() -> #initial_builder_ident #type_generics {
                     #initial_builder_ident::new()
                 }
             }
@@ -418,10 +420,12 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             None
         );
 
+        let const_kw = self.token_generator.const_keyword();
+
         Ok(quote! {
             impl #impl_generics #initial_builder_ident #type_generics #where_clause {
                 #doc
-                pub fn new() -> Self {
+                pub #const_kw fn new() -> Self {
                     Self {
                         #field_init
                     }
@@ -541,24 +545,58 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             .get_impl_into();
         let field_impl_into = field.attributes().impl_into;
         let converter = field.attributes().converter.as_ref();
-        let use_impl_into = resolve_effective_impl_into(field_impl_into, struct_impl_into);
+        let is_const = self.token_generator.is_const_builder();
+        // When const, force impl_into to false (trait bounds not supported in const fn)
+        let use_impl_into = if is_const {
+            false
+        } else {
+            resolve_effective_impl_into(field_impl_into, struct_impl_into)
+        };
 
         // Use the shared utility to determine parameter configuration
         let param_config = resolve_setter_parameter_config(field_type, converter, use_impl_into);
 
         let param_type = param_config.param_type;
+        let const_kw = self.token_generator.const_keyword();
 
         // Generate method signature and body based on setter type
-        let (method_signature, method_body) = if let Some(converter_expr) = converter {
+        let (method_signature, method_body, const_fn_decl) = if let Some(converter_expr) = converter
+        {
             // Custom converter - generate a setter that applies the closure expression
             let signature = quote! {
-                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
+                pub #const_kw fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
             };
 
-            // For custom converters, generate field assignments using the closure expression
+            // For const builders with converters, generate a const fn helper
+            let (field_assignment_expr, const_fn) = if is_const {
+                use crate::utils::field_utils::{
+                    extract_closure_info, generate_const_converter_fn_name,
+                };
+                if let Some(closure_info) = extract_closure_info(converter_expr) {
+                    let const_fn_name = generate_const_converter_fn_name(&field.clean_name());
+                    let closure_param_name = closure_info.param_name;
+                    let closure_param_type = closure_info.param_type;
+                    let closure_body = closure_info.body;
+
+                    let const_fn_decl = quote! {
+                        #[doc(hidden)]
+                        const fn #const_fn_name(#closure_param_name: #closure_param_type) -> #field_type {
+                            #closure_body
+                        }
+                    };
+                    (quote! { Self::#const_fn_name(value) }, Some(const_fn_decl))
+                } else {
+                    // Fallback if closure parsing fails
+                    (quote! { (#converter_expr)(value) }, None)
+                }
+            } else {
+                (quote! { (#converter_expr)(value) }, None)
+            };
+
+            // For custom converters, generate field assignments using the expression
             let field_assignments = self.generate_field_assignments_for_transition_with_expr(
                 field_index,
-                &quote! { (#converter_expr)(value) },
+                &field_assignment_expr,
             )?;
 
             let body = quote! {
@@ -566,11 +604,11 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
                     #field_assignments
                 }
             };
-            (signature, body)
+            (signature, body, const_fn)
         } else {
             // Regular or impl_into setter
             let signature = quote! {
-                pub fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
+                pub #const_kw fn #setter_ident(self, value: #param_type) -> #output_builder_ident #type_generics
             };
 
             // Generate field assignments for regular setters
@@ -584,11 +622,13 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
                     #field_assignments
                 }
             };
-            (signature, body)
+            (signature, body, None)
         };
 
         Ok(quote! {
             impl #impl_generics #input_builder_ident #type_generics #where_clause {
+                #const_fn_decl
+
                 #doc
                 #method_signature {
                     #method_body
@@ -676,12 +716,14 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             // Generate setter for each optional field
             let struct_setter_prefix = analysis.struct_attributes().get_setter_prefix();
             let struct_impl_into = analysis.struct_attributes().get_impl_into();
+            let is_const = self.token_generator.is_const_builder();
             for optional_field in analysis.optional_fields() {
                 if optional_field.should_generate_setter() {
                     let setter_method = optional_field.generate_setter_method(
                         &syn::parse_quote!(Self),
                         struct_setter_prefix,
                         struct_impl_into,
+                        is_const,
                     )?;
                     setter_methods.extend(setter_method);
                 }
@@ -797,10 +839,12 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
             Some("This method is only available when all required fields have been provided."),
         );
 
+        let const_kw = self.token_generator.const_keyword();
+
         Ok(quote! {
             impl #impl_generics #builder_ident #type_generics #where_clause {
                 #doc
-                pub fn #build_method_ident(self) -> #struct_name #type_generics {
+                pub #const_kw fn #build_method_ident(self) -> #struct_name #type_generics {
                     #struct_name {
                         #struct_field_assignments
                     }

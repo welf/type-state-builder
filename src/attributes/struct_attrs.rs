@@ -8,15 +8,7 @@
 //! - `build_method = "name"` - Specifies a custom name for the build method
 //! - `setter_prefix = "prefix_"` - Specifies a prefix for all setter method names
 //! - `impl_into` - Use `impl Into<FieldType>` for setter parameters instead of `FieldType`
-//!
-//! # Future Extensions
-//!
-//! This module is designed to be easily extended with additional struct-level
-//! configuration options such as:
-//! - Builder visibility settings
-//! - Custom builder struct names
-//! - Error handling strategies
-//! - Documentation generation options
+//! - `const` - Generate const-compatible builder methods for compile-time construction
 //!
 
 /// Configuration derived from struct-level builder attributes.
@@ -29,6 +21,7 @@
 /// * `build_method_name` - Custom name for the final build method (None = "build")
 /// * `setter_prefix` - Common prefix for all setter method names (None = no prefix)
 /// * `impl_into` - Whether setters should accept `impl Into<FieldType>` (false = use `FieldType`)
+/// * `const` - Whether to generate const-compatible builder methods
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructAttributes {
@@ -78,6 +71,18 @@ pub struct StructAttributes {
     ///
     /// See the crate-level documentation for comprehensive usage examples.
     pub impl_into: bool,
+
+    /// Whether to generate const-compatible builder methods.
+    ///
+    /// When enabled, all builder methods (`builder()`, setters, `build()`) are
+    /// generated as `const fn`, enabling compile-time construction.
+    ///
+    /// # Constraints
+    ///
+    /// - Cannot be combined with `impl_into` (trait bounds not supported in const fn)
+    /// - All optional fields must have explicit `#[builder(default = expr)]`
+    /// - Closure converters are transformed into generated const fns
+    pub const_builder: bool,
 }
 
 impl Default for StructAttributes {
@@ -87,11 +92,13 @@ impl Default for StructAttributes {
     /// - `build_method_name: None` - Use "build" as the method name
     /// - `setter_prefix: None` - No prefix for setter methods
     /// - `impl_into: false` - Use direct field types in setters
+    /// - `const_builder: false` - Generate regular (non-const) methods
     fn default() -> Self {
         Self {
             build_method_name: None,
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         }
     }
 }
@@ -140,6 +147,17 @@ impl StructAttributes {
     ///
     pub fn get_impl_into(&self) -> bool {
         self.impl_into
+    }
+
+    /// Gets the const_builder setting for the struct.
+    ///
+    /// # Returns
+    ///
+    /// A `bool` indicating whether to generate const-compatible builder methods.
+    /// - `true` - All builder methods are `const fn`
+    /// - `false` - Regular (non-const) methods
+    pub fn get_const_builder(&self) -> bool {
+        self.const_builder
     }
 
     /// Validates that the struct attributes are consistent and valid.
@@ -230,6 +248,15 @@ impl StructAttributes {
             }
         }
 
+        // Validate const and impl_into are not used together
+        if self.const_builder && self.impl_into {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "`const` and `impl_into` cannot be used together. \
+                 `impl Into<T>` requires trait bounds which are not supported in const fn.",
+            ));
+        }
+
         Ok(())
     }
 }
@@ -315,10 +342,14 @@ pub fn parse_struct_attributes(attrs: &[syn::Attribute]) -> syn::Result<StructAt
                     // #[builder(impl_into)]
                     struct_attributes.impl_into = true;
                     Ok(())
+                } else if meta.path.is_ident("const") {
+                    // #[builder(const)]
+                    struct_attributes.const_builder = true;
+                    Ok(())
                 } else {
                     // Unknown struct-level attribute
                     Err(meta.error(
-                        "Unknown struct-level builder attribute. Supported attributes: build_method, setter_prefix, impl_into"
+                        "Unknown struct-level builder attribute. Supported attributes: build_method, setter_prefix, impl_into, const"
                     ))
                 }
             })?;
@@ -342,9 +373,11 @@ mod tests {
         assert!(attrs.build_method_name.is_none());
         assert!(attrs.setter_prefix.is_none());
         assert!(!attrs.impl_into);
+        assert!(!attrs.const_builder);
         assert_eq!(attrs.get_build_method_name(), "build");
         assert_eq!(attrs.get_setter_prefix(), None);
         assert!(!attrs.get_impl_into());
+        assert!(!attrs.get_const_builder());
     }
 
     #[test]
@@ -358,6 +391,7 @@ mod tests {
             build_method_name: Some("create".to_string()),
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         assert_eq!(custom_attrs.get_build_method_name(), "create");
     }
@@ -368,6 +402,7 @@ mod tests {
             build_method_name: Some("create".to_string()),
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         assert_eq!(attrs.get_build_method_name(), "create");
 
@@ -375,6 +410,7 @@ mod tests {
             build_method_name: Some("construct".to_string()),
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         assert_eq!(attrs2.get_build_method_name(), "construct");
     }
@@ -385,6 +421,7 @@ mod tests {
             build_method_name: Some("create".to_string()),
             setter_prefix: Some("with_".to_string()),
             impl_into: false,
+            const_builder: false,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -398,6 +435,7 @@ mod tests {
             build_method_name: Some("".to_string()),
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -497,6 +535,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: Some("with_".to_string()),
             impl_into: false,
+            const_builder: false,
         };
         assert_eq!(custom_attrs.get_setter_prefix(), Some("with_"));
     }
@@ -541,6 +580,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: Some("".to_string()),
             impl_into: false,
+            const_builder: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -556,6 +596,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: Some("1invalid_".to_string()),
             impl_into: false,
+            const_builder: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -571,6 +612,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: Some("with-".to_string()),
             impl_into: false,
+            const_builder: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -591,6 +633,7 @@ mod tests {
                 build_method_name: None,
                 setter_prefix: Some(prefix.to_string()),
                 impl_into: false,
+                const_builder: false,
             };
             assert!(
                 attrs.validate().is_ok(),
@@ -625,6 +668,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: None,
             impl_into: true,
+            const_builder: false,
         };
         assert!(impl_into_attrs.get_impl_into());
 
@@ -633,6 +677,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         assert!(!no_impl_into_attrs.get_impl_into());
     }
@@ -680,11 +725,12 @@ mod tests {
 
     #[test]
     fn test_validate_impl_into_attributes() {
-        // Valid: impl_into with other attributes
+        // Valid: impl_into with other attributes (but not const)
         let valid_attrs = StructAttributes {
             build_method_name: Some("create".to_string()),
             setter_prefix: Some("with_".to_string()),
             impl_into: true,
+            const_builder: false,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -693,6 +739,7 @@ mod tests {
             build_method_name: None,
             setter_prefix: None,
             impl_into: true,
+            const_builder: false,
         };
         assert!(impl_into_only.validate().is_ok());
 
@@ -701,7 +748,94 @@ mod tests {
             build_method_name: None,
             setter_prefix: None,
             impl_into: false,
+            const_builder: false,
         };
         assert!(no_impl_into.validate().is_ok());
+    }
+
+    // Tests for const_builder functionality
+
+    #[test]
+    fn test_get_const_builder() {
+        // Default case (false)
+        let default_attrs = StructAttributes::default();
+        assert!(!default_attrs.get_const_builder());
+
+        // Explicit true case
+        let const_attrs = StructAttributes {
+            build_method_name: None,
+            setter_prefix: None,
+            impl_into: false,
+            const_builder: true,
+        };
+        assert!(const_attrs.get_const_builder());
+    }
+
+    #[test]
+    fn test_parse_const_attribute() {
+        let attrs = vec![parse_quote!(#[builder(const)])];
+        let struct_attrs = parse_struct_attributes(&attrs).unwrap();
+
+        assert!(struct_attrs.const_builder);
+        assert!(struct_attrs.get_const_builder());
+        assert_eq!(struct_attrs.get_build_method_name(), "build"); // default
+        assert!(!struct_attrs.get_impl_into()); // default
+    }
+
+    #[test]
+    fn test_parse_const_with_other_attributes() {
+        let attrs = vec![parse_quote!(#[builder(const, build_method = "create")])];
+        let struct_attrs = parse_struct_attributes(&attrs).unwrap();
+
+        assert!(struct_attrs.const_builder);
+        assert_eq!(struct_attrs.build_method_name, Some("create".to_string()));
+        assert!(struct_attrs.get_const_builder());
+        assert_eq!(struct_attrs.get_build_method_name(), "create");
+    }
+
+    #[test]
+    fn test_validate_const_with_impl_into_error() {
+        let invalid_attrs = StructAttributes {
+            build_method_name: None,
+            setter_prefix: None,
+            impl_into: true,
+            const_builder: true,
+        };
+        let result = invalid_attrs.validate();
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("`const` and `impl_into` cannot be used together"));
+    }
+
+    #[test]
+    fn test_parse_const_with_impl_into_error() {
+        let attrs = vec![parse_quote!(#[builder(const, impl_into)])];
+        let result = parse_struct_attributes(&attrs);
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("`const` and `impl_into` cannot be used together"));
+    }
+
+    #[test]
+    fn test_validate_const_alone_is_valid() {
+        let const_only = StructAttributes {
+            build_method_name: None,
+            setter_prefix: None,
+            impl_into: false,
+            const_builder: true,
+        };
+        assert!(const_only.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_const_with_setter_prefix_is_valid() {
+        let attrs = StructAttributes {
+            build_method_name: Some("create".to_string()),
+            setter_prefix: Some("with_".to_string()),
+            impl_into: false,
+            const_builder: true,
+        };
+        assert!(attrs.validate().is_ok());
     }
 }

@@ -242,11 +242,26 @@ impl<'a> RegularBuilderCoordinator<'a> {
             Some("All fields start with their default values and can be customized using setter methods.")
         );
 
+        let const_kw = self.token_generator.const_keyword();
+        let is_const = self.token_generator.is_const_builder();
+
+        // For const builders, inline initialization instead of calling default()
+        let builder_init = if is_const {
+            let default_field_init = self.generate_default_field_initializations()?;
+            quote! {
+                #builder_ident {
+                    #default_field_init
+                }
+            }
+        } else {
+            quote! { #builder_ident::default() }
+        };
+
         Ok(quote! {
             impl #impl_generics #struct_name #type_generics #where_clause {
                 #doc
-                pub fn builder() -> #builder_ident #type_generics {
-                    #builder_ident::default()
+                pub #const_kw fn builder() -> #builder_ident #type_generics {
+                    #builder_init
                 }
             }
         })
@@ -261,6 +276,11 @@ impl<'a> RegularBuilderCoordinator<'a> {
     ///
     /// A `syn::Result<proc_macro2::TokenStream>` containing the Default implementation.
     fn generate_default_implementation(&self) -> syn::Result<proc_macro2::TokenStream> {
+        // Skip Default impl for const builders - Default::default() is not const
+        if self.token_generator.is_const_builder() {
+            return Ok(quote! {});
+        }
+
         let builder_ident = syn::parse_str::<Ident>(&self.builder_name)?;
 
         let impl_generics = self.token_generator.impl_generics_tokens();
@@ -360,10 +380,25 @@ impl<'a> RegularBuilderCoordinator<'a> {
             None,
         );
 
+        let const_kw = self.token_generator.const_keyword();
+        let is_const = self.token_generator.is_const_builder();
+
+        // For const builders, inline initialization instead of calling default()
+        let builder_init = if is_const {
+            let default_field_init = self.generate_default_field_initializations()?;
+            quote! {
+                #builder_ident {
+                    #default_field_init
+                }
+            }
+        } else {
+            quote! { Self::default() }
+        };
+
         Ok(quote! {
             #doc
-            pub fn new() -> #builder_ident #type_generics {
-                Self::default()
+            pub #const_kw fn new() -> #builder_ident #type_generics {
+                #builder_init
             }
         })
     }
@@ -379,16 +414,23 @@ impl<'a> RegularBuilderCoordinator<'a> {
     fn generate_setter_methods(&self) -> syn::Result<proc_macro2::TokenStream> {
         let mut setter_methods = proc_macro2::TokenStream::new();
         let analysis = self.token_generator.analysis();
+        let is_const = self.token_generator.is_const_builder();
 
         // Generate setter for each optional field that should have one
         let struct_setter_prefix = analysis.struct_attributes().get_setter_prefix();
-        let struct_impl_into = analysis.struct_attributes().get_impl_into();
+        // Disable impl_into for const builders (impl Into<T> is not const-compatible)
+        let struct_impl_into = if is_const {
+            false
+        } else {
+            analysis.struct_attributes().get_impl_into()
+        };
         for optional_field in analysis.optional_fields() {
             if optional_field.should_generate_setter() {
                 let setter_method = optional_field.generate_setter_method(
                     &syn::parse_quote!(Self),
                     struct_setter_prefix,
                     struct_impl_into,
+                    is_const,
                 )?;
                 setter_methods.extend(setter_method);
             }
@@ -423,9 +465,11 @@ impl<'a> RegularBuilderCoordinator<'a> {
             Some("This method is immediately available since all fields are optional."),
         );
 
+        let const_kw = self.token_generator.const_keyword();
+
         Ok(quote! {
             #doc
-            pub fn #build_method_ident(self) -> #struct_name #type_generics {
+            pub #const_kw fn #build_method_ident(self) -> #struct_name #type_generics {
                 #struct_name {
                     #struct_field_assignments
                 }

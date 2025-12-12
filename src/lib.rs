@@ -97,6 +97,7 @@
 //! - `#[builder(build_method = "method_name")]` - Custom build method name
 //! - `#[builder(setter_prefix = "prefix_")]` - Prefix for all setter method names
 //! - `#[builder(impl_into)]` - Generate setters with `impl Into<FieldType>` parameters
+//! - `#[builder(const)]` - Generate `const fn` builder methods for compile-time construction
 //!
 //! ## Field-level Attributes
 //!
@@ -472,6 +473,95 @@
 //!     .max_connections(Some(100))
 //!     .build();
 //! ```
+//!
+//! ## Const Builders
+//!
+//! The `#[builder(const)]` attribute generates `const fn` builder methods, enabling
+//! compile-time constant construction. This is useful for embedded systems, static
+//! configuration, and other scenarios where values must be known at compile time.
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder, Debug, PartialEq)]
+//! #[builder(const)]
+//! struct Config {
+//!     #[builder(required)]
+//!     name: &'static str,
+//!
+//!     #[builder(required)]
+//!     version: u32,
+//!
+//!     #[builder(default = 8080)]
+//!     port: u16,
+//! }
+//!
+//! // Compile-time constant construction
+//! const APP_CONFIG: Config = Config::builder()
+//!     .name("my-app")
+//!     .version(1)
+//!     .port(3000)
+//!     .build();
+//!
+//! // Also works in static context
+//! static DEFAULT_CONFIG: Config = Config::builder()
+//!     .name("default")
+//!     .version(0)
+//!     .build();
+//!
+//! // And in const fn
+//! const fn make_config(name: &'static str) -> Config {
+//!     Config::builder()
+//!         .name(name)
+//!         .version(1)
+//!         .build()
+//! }
+//!
+//! const CUSTOM: Config = make_config("custom");
+//! ```
+//!
+//! ### Const Builder Requirements
+//!
+//! When using `#[builder(const)]`, there are some restrictions:
+//!
+//! - **Explicit defaults required**: Optional fields must use `#[builder(default = expr)]`
+//!   because `Default::default()` cannot be called in const context
+//! - **No `impl_into`**: The `impl_into` attribute is incompatible with const builders
+//!   because trait bounds are not supported in const fn
+//! - **Const-compatible types**: Field types must support const construction (e.g.,
+//!   `&'static str` instead of `String`, arrays instead of `Vec`)
+//!
+//! ### Const Builders with Converters
+//!
+//! Closure converters work with const builders. The macro automatically generates
+//! a `const fn` from the closure body:
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder, Debug, PartialEq)]
+//! #[builder(const)]
+//! struct Data {
+//!     // Converter closure is transformed into a const fn
+//!     #[builder(required, converter = |s: &'static str| s.len())]
+//!     name_length: usize,
+//!
+//!     #[builder(default = 0, converter = |n: i32| n * 2)]
+//!     doubled: i32,
+//! }
+//!
+//! const DATA: Data = Data::builder()
+//!     .name_length("hello")  // Converted to 5
+//!     .doubled(21)           // Converted to 42
+//!     .build();
+//!
+//! assert_eq!(DATA.name_length, 5);
+//! assert_eq!(DATA.doubled, 42);
+//! ```
+//!
+//! **Note**: The closure body must be const-evaluable. If it contains non-const
+//! operations (like heap allocation or trait method calls), the Rust compiler
+//! will produce an error.
 //!
 //! # Error Prevention
 //!

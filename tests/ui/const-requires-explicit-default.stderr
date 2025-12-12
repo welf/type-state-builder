@@ -1,0 +1,7 @@
+error: const builder requires explicit default for field `name`
+       note: Default::default() cannot be used in const context
+       help: add an explicit default: #[builder(default = <value>)] to field `name`
+ --> tests/ui/const-requires-explicit-default.rs:7:5
+  |
+7 |     name: Option<String>,
+  |     ^^^^

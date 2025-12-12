@@ -1,0 +1,7 @@
+error: `const` and `impl_into` cannot be used together. `impl Into<T>` requires trait bounds which are not supported in const fn.
+ --> tests/ui/const-with-impl-into.rs:3:10
+  |
+3 | #[derive(TypeStateBuilder)]
+  |          ^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)
