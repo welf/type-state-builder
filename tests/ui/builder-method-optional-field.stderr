@@ -1,0 +1,7 @@
+error: `builder_method` can only be used on required fields, but `name` is optional
+       note: optional fields cannot be builder entry points
+       help: add `#[builder(required)]` to this field or remove `builder_method`
+ --> tests/ui/builder-method-optional-field.rs:6:5
+  |
+6 |     name: Option<String>,
+  |     ^^^^

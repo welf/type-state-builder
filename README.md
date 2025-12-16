@@ -109,7 +109,7 @@ Add TypeStateBuilder to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-type-state-builder = "0.5.0"
+type-state-builder = "0.5.1"
 ```
 
 ### no_std Support
@@ -529,6 +529,52 @@ const DATA: Data = Data::builder()
     .name_length("hello")  // Converted to 5
     .doubled(21)           // Converted to 42
     .build();
+```
+
+### Builder Method Entry Point
+
+The `#[builder(builder_method)]` attribute makes a required field's setter the entry point to the builder, replacing the
+`builder()` method. This provides a more ergonomic API when one field is the natural starting point.
+
+```rust
+use type_state_builder::TypeStateBuilder;
+
+#[derive(TypeStateBuilder, Debug, PartialEq)]
+struct User {
+    #[builder(required, builder_method)]
+    id: u64,
+    #[builder(required, impl_into)]
+    name: String,
+}
+
+// Instead of User::builder().id(1).name("Alice").build()
+let user = User::id(1).name("Alice").build();
+
+assert_eq!(user.id, 1);
+assert_eq!(user.name, "Alice".to_string());
+```
+
+**Requirements:**
+
+- Only one field per struct can have `builder_method`
+- The field must be required (not optional)
+- Cannot be combined with `skip_setter`
+
+**With const builders:**
+
+```rust
+use type_state_builder::TypeStateBuilder;
+
+#[derive(TypeStateBuilder, Debug, PartialEq)]
+#[builder(const)]
+struct Config {
+    #[builder(required, builder_method)]
+    name: &'static str,
+    #[builder(default = 0)]
+    version: u32,
+}
+
+const APP: Config = Config::name("myapp").version(1).build();
 ```
 
 ## Understanding Error Messages

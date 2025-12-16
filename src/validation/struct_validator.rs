@@ -61,6 +61,9 @@ impl<'a> StructValidator<'a> {
         // Validate const builder requirements
         self.validate_const_builder_requirements(analysis)?;
 
+        // Validate builder_method requirements
+        self.validate_builder_method_requirements(analysis)?;
+
         Ok(())
     }
 
@@ -273,6 +276,57 @@ impl<'a> StructValidator<'a> {
                     )),
                 ));
             }
+        }
+
+        Ok(())
+    }
+
+    /// Validates builder_method attribute requirements.
+    ///
+    /// When `#[builder(builder_method)]` is used, this validates that:
+    /// - Only one field has the attribute
+    /// - The field is required (not optional)
+    fn validate_builder_method_requirements(&self, analysis: &StructAnalysis) -> syn::Result<()> {
+        let mut builder_method_fields: Vec<&crate::analysis::FieldInfo> = Vec::new();
+
+        // Check required fields for builder_method
+        for field in analysis.required_fields() {
+            if field.attributes().builder_method {
+                builder_method_fields.push(field);
+            }
+        }
+
+        // Check optional fields - builder_method on optional field is an error
+        for field in analysis.optional_fields() {
+            if field.attributes().builder_method {
+                let field_name = field.name();
+                return Err(ErrorMessages::structured_error_span(
+                    field_name.span(),
+                    &format!(
+                        "`builder_method` can only be used on required fields, but `{}` is optional",
+                        field_name
+                    ),
+                    Some("optional fields cannot be builder entry points"),
+                    Some("add `#[builder(required)]` to this field or remove `builder_method`"),
+                ));
+            }
+        }
+
+        // Check for multiple builder_method fields
+        if builder_method_fields.len() > 1 {
+            let field_names: Vec<_> = builder_method_fields
+                .iter()
+                .map(|f| f.name().to_string())
+                .collect();
+            return Err(ErrorMessages::structured_error_span(
+                proc_macro2::Span::call_site(),
+                &format!(
+                    "only one field can have `builder_method`, but found on: {}",
+                    field_names.join(", ")
+                ),
+                Some("the builder can only have one entry point"),
+                Some("remove `builder_method` from all but one field"),
+            ));
         }
 
         Ok(())

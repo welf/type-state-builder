@@ -332,7 +332,18 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
         let analysis = self.token_generator.analysis();
         let struct_name = analysis.struct_name();
 
-        // Get the initial state (no fields set)
+        let impl_generics = self.token_generator.impl_generics_tokens();
+        let type_generics = self.token_generator.type_generics_tokens();
+        let where_clause = self.token_generator.where_clause_tokens();
+        let const_kw = self.token_generator.const_keyword();
+
+        // Check if we have a builder_method field
+        if let Some(builder_method_field) = analysis.builder_method_field() {
+            // Generate entry point as the field setter on the struct
+            return self.generate_builder_method_entry_point(builder_method_field);
+        }
+
+        // Standard case: generate builder() method
         let initial_state = self
             .state_combinations
             .iter()
@@ -346,23 +357,157 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
 
         let initial_builder_ident = syn::parse_str::<Ident>(&initial_state.concrete_type_name)?;
 
-        let impl_generics = self.token_generator.impl_generics_tokens();
-        let type_generics = self.token_generator.type_generics_tokens();
-        let where_clause = self.token_generator.where_clause_tokens();
-
         let doc = self.token_generator.generate_method_documentation(
             "builder",
             "Creates a new type-safe builder for constructing an instance",
             Some("This builder uses the type-state pattern to ensure all required fields are set before building.")
         );
 
-        let const_kw = self.token_generator.const_keyword();
-
         Ok(quote! {
             impl #impl_generics #struct_name #type_generics #where_clause {
                 #doc
                 pub #const_kw fn builder() -> #initial_builder_ident #type_generics {
                     #initial_builder_ident::new()
+                }
+            }
+        })
+    }
+
+    /// Generates the entry point method for builder_method attribute.
+    ///
+    /// When a field has `#[builder(builder_method)]`, this generates the entry point
+    /// as a method on the struct that takes the field value and returns the initial
+    /// builder state with that field already set.
+    fn generate_builder_method_entry_point(
+        &self,
+        field: &crate::analysis::FieldInfo,
+    ) -> syn::Result<proc_macro2::TokenStream> {
+        let analysis = self.token_generator.analysis();
+        let struct_name = analysis.struct_name();
+
+        let impl_generics = self.token_generator.impl_generics_tokens();
+        let type_generics = self.token_generator.type_generics_tokens();
+        let where_clause = self.token_generator.where_clause_tokens();
+        let const_kw = self.token_generator.const_keyword();
+        let is_const = self.token_generator.is_const_builder();
+
+        // Find the field index
+        let field_index = analysis
+            .required_fields()
+            .iter()
+            .position(|f| f.name() == field.name())
+            .ok_or_else(|| {
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "builder_method field not found in required fields",
+                )
+            })?;
+
+        // Find the initial state (with only this field set)
+        let initial_state = self
+            .state_combinations
+            .iter()
+            .find(|combo| combo.set_fields.len() == 1 && combo.set_fields.contains(&field_index))
+            .ok_or_else(|| {
+                syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "No initial state found for builder_method field",
+                )
+            })?;
+
+        let initial_builder_ident = syn::parse_str::<Ident>(&initial_state.concrete_type_name)?;
+
+        let struct_setter_prefix = analysis.struct_attributes().get_setter_prefix();
+        let setter_name = field.final_setter_name(struct_setter_prefix);
+        let setter_ident = syn::parse_str::<Ident>(&setter_name)?;
+
+        let field_type = field.field_type();
+        let field_name = field.name();
+
+        // Handle impl_into
+        let use_impl_into = if is_const {
+            false // impl_into not supported in const fn
+        } else {
+            crate::utils::field_utils::resolve_effective_impl_into(
+                field.attributes().impl_into,
+                analysis.struct_attributes().get_impl_into(),
+            )
+        };
+
+        // Handle converter
+        let converter = field.attributes().converter.as_ref();
+
+        // Determine parameter type and field assignment
+        let (param_type, field_assignment, const_fn_decl): (
+            proc_macro2::TokenStream,
+            proc_macro2::TokenStream,
+            Option<proc_macro2::TokenStream>,
+        ) = if let Some(converter_expr) = converter {
+            // Use converter
+            use crate::utils::field_utils::{
+                extract_closure_info, generate_const_converter_fn_name,
+            };
+            if let Some(closure_info) = extract_closure_info(converter_expr) {
+                let closure_param_name = &closure_info.param_name;
+                let closure_param_type = &closure_info.param_type;
+                let closure_body = &closure_info.body;
+
+                if is_const {
+                    let const_fn_name = generate_const_converter_fn_name(&field.clean_name());
+                    let const_fn = quote! {
+                        #[doc(hidden)]
+                        const fn #const_fn_name(#closure_param_name: #closure_param_type) -> #field_type {
+                            #closure_body
+                        }
+                    };
+                    (
+                        quote! { #closure_param_type },
+                        quote! { Self::#const_fn_name(value) },
+                        Some(const_fn),
+                    )
+                } else {
+                    (
+                        quote! { #closure_param_type },
+                        quote! { (#converter_expr)(value) },
+                        None,
+                    )
+                }
+            } else {
+                // Non-closure converter
+                (
+                    quote! { #field_type },
+                    quote! { (#converter_expr)(value) },
+                    None,
+                )
+            }
+        } else if use_impl_into {
+            // Use impl Into
+            (
+                quote! { impl ::core::convert::Into<#field_type> },
+                quote! { value.into() },
+                None,
+            )
+        } else {
+            // Direct type
+            (quote! { #field_type }, quote! { value }, None)
+        };
+
+        let doc = self.token_generator.generate_method_documentation(
+            &setter_name,
+            &format!(
+                "Creates a new builder with `{}` set to the given value",
+                field_name
+            ),
+            Some("This is the entry point for the type-safe builder pattern."),
+        );
+
+        Ok(quote! {
+            impl #impl_generics #struct_name #type_generics #where_clause {
+                #const_fn_decl
+
+                #doc
+                pub #const_kw fn #setter_ident(value: #param_type) -> #initial_builder_ident #type_generics {
+                    #initial_builder_ident::new(#field_assignment)
                 }
             }
         })
@@ -397,41 +542,89 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
     ///
     /// A `syn::Result<proc_macro2::TokenStream>` containing the constructor implementation.
     fn generate_initial_constructor_method(&self) -> syn::Result<proc_macro2::TokenStream> {
-        let initial_state = self
-            .state_combinations
-            .iter()
-            .find(|combo| combo.set_fields.is_empty())
-            .ok_or_else(|| {
-                syn::Error::new(proc_macro2::Span::call_site(), "No initial state found")
-            })?;
+        let analysis = self.token_generator.analysis();
+
+        // Check if we have a builder_method field
+        let builder_method_field = analysis.builder_method_field();
+
+        let initial_state = if builder_method_field.is_some() {
+            // When builder_method is used, the initial state has that field set
+            let field_index = analysis
+                .required_fields()
+                .iter()
+                .position(|f| f.attributes().builder_method)
+                .unwrap();
+            self.state_combinations
+                .iter()
+                .find(|combo| {
+                    combo.set_fields.len() == 1 && combo.set_fields.contains(&field_index)
+                })
+                .ok_or_else(|| {
+                    syn::Error::new(
+                        proc_macro2::Span::call_site(),
+                        "No initial state found for builder_method",
+                    )
+                })?
+        } else {
+            // Standard case: initial state has no fields set
+            self.state_combinations
+                .iter()
+                .find(|combo| combo.set_fields.is_empty())
+                .ok_or_else(|| {
+                    syn::Error::new(proc_macro2::Span::call_site(), "No initial state found")
+                })?
+        };
 
         let initial_builder_ident = syn::parse_str::<Ident>(&initial_state.concrete_type_name)?;
 
         let impl_generics = self.token_generator.impl_generics_tokens();
         let type_generics = self.token_generator.type_generics_tokens();
         let where_clause = self.token_generator.where_clause_tokens();
+        let const_kw = self.token_generator.const_keyword();
 
         // Generate field initializations
         let field_init = self.generate_initial_field_initializations()?;
 
-        let doc = self.token_generator.generate_method_documentation(
-            "new",
-            "Creates a new builder with all required fields unset and optional fields at default values",
-            None
-        );
+        if let Some(bm_field) = builder_method_field {
+            let field_type = bm_field.field_type();
+            let field_name = bm_field.name();
 
-        let const_kw = self.token_generator.const_keyword();
+            let doc = self.token_generator.generate_method_documentation(
+                "new",
+                &format!("Creates a new builder with `{}` set", field_name),
+                None,
+            );
 
-        Ok(quote! {
-            impl #impl_generics #initial_builder_ident #type_generics #where_clause {
-                #doc
-                pub #const_kw fn new() -> Self {
-                    Self {
-                        #field_init
+            Ok(quote! {
+                impl #impl_generics #initial_builder_ident #type_generics #where_clause {
+                    #doc
+                    pub #const_kw fn new(#field_name: #field_type) -> Self {
+                        Self {
+                            #field_name,
+                            #field_init
+                        }
                     }
                 }
-            }
-        })
+            })
+        } else {
+            // Standard case: new() takes no arguments
+            let doc = self.token_generator.generate_method_documentation(
+                "new",
+                "Creates a new builder with all required fields unset and optional fields at default values",
+                None
+            );
+
+            Ok(quote! {
+                impl #impl_generics #initial_builder_ident #type_generics #where_clause {
+                    #doc
+                    pub #const_kw fn new() -> Self {
+                        Self {
+                            #field_init
+                        }
+                    }
+                }
+            })
+        }
     }
 
     /// Generates initial field initialization code for the initial builder state.
@@ -443,8 +636,12 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
         let mut field_init = proc_macro2::TokenStream::new();
         let analysis = self.token_generator.analysis();
 
-        // Initialize required fields as None
+        // Initialize required fields as None (skip builder_method field, it's set separately)
         for required_field in analysis.required_fields() {
+            // Skip builder_method field - it's initialized separately in new()
+            if required_field.attributes().builder_method {
+                continue;
+            }
             let field_name = required_field.name();
             let none_option = self.token_generator.generate_type_path("Option");
             field_init.extend(quote! {
@@ -918,8 +1115,22 @@ impl<'a> TypeStateBuilderCoordinator<'a> {
         let mut combinations = Vec::new();
         let num_required_fields = analysis.required_fields().len();
 
+        // Find the builder_method field index if any
+        let builder_method_index = analysis
+            .required_fields()
+            .iter()
+            .position(|f| f.attributes().builder_method);
+
         // Generate all possible combinations (2^n states)
         for state_mask in 0..(1 << num_required_fields) {
+            // Skip states where builder_method field is not set
+            // (those states are unreachable when using builder_method)
+            if let Some(bm_index) = builder_method_index {
+                if (state_mask & (1 << bm_index)) == 0 {
+                    continue;
+                }
+            }
+
             let mut set_fields = Vec::new();
             let mut has_parts = Vec::new();
             let mut missing_parts = Vec::new();

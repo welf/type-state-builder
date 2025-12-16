@@ -150,6 +150,16 @@ pub struct FieldAttributes {
     /// This attribute is mutually exclusive with `impl_into` and `skip_setter`.
     /// It is compatible with `required`, `setter_name`, `setter_prefix`, and `default`.
     pub converter: Option<syn::Expr>,
+
+    /// Whether this field's setter should be the builder entry point.
+    ///
+    /// When true, the setter for this field is generated as an associated function
+    /// on the struct itself (e.g., `User::id(1)`) instead of on the builder.
+    /// This replaces the `builder()` method as the entry point.
+    ///
+    /// Only one field per struct can have `builder_method`. The field must be
+    /// required and cannot be combined with `skip_setter`.
+    pub builder_method: bool,
 }
 
 impl Default for FieldAttributes {
@@ -163,6 +173,7 @@ impl Default for FieldAttributes {
             skip_setter: false,
             impl_into: None,
             converter: None,
+            builder_method: false,
         }
     }
 }
@@ -236,6 +247,16 @@ impl FieldAttributes {
                 "Field-level converter is incompatible with impl_into",
                 Some("#[builder(converter)] and #[builder(impl_into)] are incompatible"),
                 Some("use either custom converter or impl_into, not both"),
+            ));
+        }
+
+        // Validate that builder_method and skip_setter are mutually exclusive
+        if self.builder_method && self.skip_setter {
+            return Err(ErrorMessages::structured_error_span(
+                proc_macro2::Span::call_site(),
+                "Field-level builder_method is incompatible with skip_setter",
+                Some("#[builder(builder_method)] and #[builder(skip_setter)] are incompatible"),
+                Some("remove one of these attributes"),
             ));
         }
 
@@ -440,10 +461,18 @@ pub fn parse_field_attributes(attrs: &[syn::Attribute]) -> syn::Result<FieldAttr
 
                     field_attributes.converter = Some(expr);
                     Ok(())
+                } else if meta.path.is_ident("builder_method") {
+                    // #[builder(builder_method)]
+                    // Check for duplicate builder_method attributes
+                    if field_attributes.builder_method {
+                        return Err(meta.error("Duplicate builder_method attribute. Only one builder_method is allowed per field"));
+                    }
+                    field_attributes.builder_method = true;
+                    Ok(())
                 } else {
                     // Unknown attribute
                     Err(meta.error(
-                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into, converter"
+                        "Unknown builder attribute. Supported attributes: required, setter_name, setter_prefix, default, skip_setter, impl_into, converter, builder_method"
                     ))
                 }
             })?;
@@ -794,6 +823,7 @@ mod tests {
             skip_setter: false,
             impl_into: None,
             converter: None,
+            builder_method: false,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -806,6 +836,7 @@ mod tests {
             skip_setter: true,
             impl_into: None,
             converter: None,
+            builder_method: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -1413,6 +1444,7 @@ mod tests {
             skip_setter: false,
             impl_into: None,
             converter: Some(syn::parse_str("|value: String| value").unwrap()),
+            builder_method: false,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -1425,6 +1457,7 @@ mod tests {
             skip_setter: false,
             impl_into: None,
             converter: Some(syn::parse_str("|value: String| value").unwrap()),
+            builder_method: false,
         };
         assert!(valid_attrs.validate().is_ok());
 
@@ -1437,6 +1470,7 @@ mod tests {
             skip_setter: true,
             impl_into: None,
             converter: Some(syn::parse_str("|value: String| value").unwrap()),
+            builder_method: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());
@@ -1454,6 +1488,7 @@ mod tests {
             skip_setter: false,
             impl_into: Some(true),
             converter: Some(syn::parse_str("|value: String| value").unwrap()),
+            builder_method: false,
         };
         let result = invalid_attrs.validate();
         assert!(result.is_err());

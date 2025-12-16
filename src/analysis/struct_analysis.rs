@@ -156,6 +156,16 @@ impl StructAnalysis {
             .chain(self.optional_fields.iter())
     }
 
+    /// Returns the field with `builder_method` attribute, if any.
+    ///
+    /// This field's setter becomes the entry point to the builder,
+    /// replacing the `builder()` method.
+    pub fn builder_method_field(&self) -> Option<&FieldInfo> {
+        self.required_fields
+            .iter()
+            .find(|f| f.attributes().builder_method)
+    }
+
     /// Checks if the struct has only optional fields.
     ///
     /// This determines which builder pattern to use:

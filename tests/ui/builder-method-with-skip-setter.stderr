@@ -1,0 +1,9 @@
+error: Field-level builder_method is incompatible with skip_setter
+       note: #[builder(builder_method)] and #[builder(skip_setter)] are incompatible
+       help: remove one of these attributes
+ --> tests/ui/builder-method-with-skip-setter.rs:3:10
+  |
+3 | #[derive(TypeStateBuilder)]
+  |          ^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)

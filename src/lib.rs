@@ -109,6 +109,7 @@
 //! - `#[builder(impl_into)]` - Generate setter with `impl Into<FieldType>` parameter
 //! - `#[builder(impl_into = false)]` - Override struct-level `impl_into` for this field
 //! - `#[builder(converter = |param: InputType| -> FieldType { expression })` - Custom conversion logic for setter input
+//! - `#[builder(builder_method)]` - Use this field's setter as the builder entry point (replaces `builder()`)
 //!
 //! # Advanced Examples
 //!
@@ -330,7 +331,7 @@
 //!
 //! #[derive(TypeStateBuilder)]
 //! struct User {
-//!     #[builder(required)]
+//!     #[builder(required, impl_into)]
 //!     name: String,
 //!
 //!     // Normalize email to lowercase and trim whitespace
@@ -347,7 +348,7 @@
 //! }
 //!
 //! let user = User::builder()
-//!     .name("Alice".to_string())
+//!     .name("Alice")
 //!     .email("  ALICE@EXAMPLE.COM  ")  // Will be normalized to "alice@example.com"
 //!     .interests("rust, programming, web")  // Parsed to Vec<String>
 //!     .age("25")  // Parsed from string to u32
@@ -562,6 +563,55 @@
 //! **Note**: The closure body must be const-evaluable. If it contains non-const
 //! operations (like heap allocation or trait method calls), the Rust compiler
 //! will produce an error.
+//!
+//! ## Builder Method Entry Point
+//!
+//! The `#[builder(builder_method)]` attribute makes a required field's setter the
+//! entry point to the builder, replacing the `builder()` method. This provides a
+//! more ergonomic API when one field is the natural starting point.
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder, Debug, PartialEq)]
+//! struct User {
+//!     #[builder(required, builder_method)]
+//!     id: u64,
+//!     #[builder(required, impl_into)]
+//!     name: String,
+//! }
+//!
+//! // Instead of User::builder().id(1).name("Alice").build()
+//! let user = User::id(1).name("Alice").build();
+//!
+//! assert_eq!(user.id, 1);
+//! assert_eq!(user.name, "Alice".to_string());
+//! ```
+//!
+//! ### Requirements
+//!
+//! - Only one field per struct can have `builder_method`
+//! - The field must be required (not optional)
+//! - Cannot be combined with `skip_setter`
+//!
+//! ### With Const Builders
+//!
+//! The `builder_method` attribute works with const builders:
+//!
+//! ```
+//! use type_state_builder::TypeStateBuilder;
+//!
+//! #[derive(TypeStateBuilder, Debug, PartialEq)]
+//! #[builder(const)]
+//! struct Config {
+//!     #[builder(required, builder_method)]
+//!     name: &'static str,
+//!     #[builder(default = 0)]
+//!     version: u32,
+//! }
+//!
+//! const APP: Config = Config::name("myapp").version(1).build();
+//! ```
 //!
 //! # Error Prevention
 //!

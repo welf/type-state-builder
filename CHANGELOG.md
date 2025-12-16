@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2025-12-16
+
+### Added
+
+- **Builder method entry point** with `#[builder(builder_method)]` attribute
+  - Makes a required field's setter the entry point to the builder
+  - Replaces `builder()` method: use `User::id(1).name("Alice").build()` instead of `User::builder().id(1).name("Alice").build()`
+  - Works with `setter_name`, `setter_prefix`, `impl_into`, and `converter` attributes
+  - Compatible with const builders
+
+### Validation
+
+- Only one field per struct can have `builder_method`
+- The field must be required (not optional)
+- Cannot be combined with `skip_setter`
+
 ## [0.5.0] - 2025-12-12
 
 ### Added

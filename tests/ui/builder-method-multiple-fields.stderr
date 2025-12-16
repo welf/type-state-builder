@@ -1,0 +1,9 @@
+error: only one field can have `builder_method`, but found on: id, name
+       note: the builder can only have one entry point
+       help: remove `builder_method` from all but one field
+ --> tests/ui/builder-method-multiple-fields.rs:3:10
+  |
+3 | #[derive(TypeStateBuilder)]
+  |          ^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `TypeStateBuilder` (in Nightly builds, run with -Z macro-backtrace for more info)

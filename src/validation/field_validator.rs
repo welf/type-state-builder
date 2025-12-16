@@ -209,6 +209,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -232,6 +233,7 @@ mod tests {
                 skip_setter: true,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -258,6 +260,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -280,6 +283,7 @@ mod tests {
                 skip_setter: true,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -306,6 +310,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -332,6 +337,7 @@ mod tests {
                 skip_setter: true,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -358,6 +364,7 @@ mod tests {
                 skip_setter: true,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -384,6 +391,7 @@ mod tests {
                 skip_setter: true,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -406,6 +414,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -428,6 +437,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
@@ -450,6 +460,7 @@ mod tests {
                 skip_setter: false,
                 impl_into: None,
                 converter: None,
+                builder_method: false,
             },
         );
 
